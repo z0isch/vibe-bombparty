@@ -103,20 +103,12 @@ export type Reducer = never
 export class RemoteReducers {
   constructor(private connection: DbConnectionImpl, private setCallReducerFlags: SetReducerFlags) {}
 
-  identityConnected() {
-    this.connection.callReducer("identity_connected", new Uint8Array(0), this.setCallReducerFlags.identityConnectedFlags);
-  }
-
   onIdentityConnected(callback: (ctx: ReducerEventContext) => void) {
     this.connection.onReducer("identity_connected", callback);
   }
 
   removeOnIdentityConnected(callback: (ctx: ReducerEventContext) => void) {
     this.connection.offReducer("identity_connected", callback);
-  }
-
-  identityDisconnected() {
-    this.connection.callReducer("identity_disconnected", new Uint8Array(0), this.setCallReducerFlags.identityDisconnectedFlags);
   }
 
   onIdentityDisconnected(callback: (ctx: ReducerEventContext) => void) {
@@ -146,16 +138,6 @@ export class RemoteReducers {
 }
 
 export class SetReducerFlags {
-  identityConnectedFlags: CallReducerFlags = 'FullUpdate';
-  identityConnected(flags: CallReducerFlags) {
-    this.identityConnectedFlags = flags;
-  }
-
-  identityDisconnectedFlags: CallReducerFlags = 'FullUpdate';
-  identityDisconnected(flags: CallReducerFlags) {
-    this.identityDisconnectedFlags = flags;
-  }
-
   registerPlayerFlags: CallReducerFlags = 'FullUpdate';
   registerPlayer(flags: CallReducerFlags) {
     this.registerPlayerFlags = flags;

@@ -28,7 +28,7 @@ pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), Str
     Ok(())
 }
 
-#[spacetimedb::reducer]
+#[spacetimedb::reducer(client_connected)]
 pub fn identity_connected(ctx: &ReducerContext) {
     // Update player connection status
     if let Some(mut player) = ctx.db.player().identity().find(&ctx.sender) {
@@ -38,7 +38,7 @@ pub fn identity_connected(ctx: &ReducerContext) {
     }
 }
 
-#[spacetimedb::reducer]
+#[spacetimedb::reducer(client_disconnected)]
 pub fn identity_disconnected(ctx: &ReducerContext) {
     // Update player disconnection status
     if let Some(mut player) = ctx.db.player().identity().find(&ctx.sender) {

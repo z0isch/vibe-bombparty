@@ -89,7 +89,7 @@ vibe-bombparty/
     *(Leave this running in background or separate terminal)*
 4.  **(If Rust code changed OR first run OR after deleting DB) Publish Module:**
     ```bash
-    spacetime publish vibe-multiplayer
+    spacetime publish vibe-bombparty
     ```
     *CRITICAL: This uploads your built module to the **running** server instance.*
 
