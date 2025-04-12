@@ -9,7 +9,7 @@ This document describes the architecture, setup, workflow, and key development p
 
 ## 1. Project Overview
 
-*   **Goal:** Create a multiplayer web game called Bombparty where players use 
+*   **Goal:** Create a turn based multiplayer web game called Bombparty
 *   **Backend:** SpacetimeDB module written in Rust (`server/`). Handles game logic, state management, and data persistence.
 *   **Frontend:** Client application built with Vite, React, Tailwind, and TypeScript (`client/`). Connects to SpacetimeDB, subscribes to data, calls reducers, and renders the game state.
 
@@ -97,10 +97,12 @@ vibe-bombparty/
 
 1.  **Navigate:** `cd client`
 2.  **(If server schema/reducers changed) Regenerate Bindings:**
-    ```bash
-    # Run this from SERVER directory:
-    cd ../server && spacetime generate --lang typescript --out-dir ../client/src/generated && cd ../client
-    ```
+      1. ```bash
+            # Run this from SERVER directory:
+            cd ../server && spacetime generate --lang typescript --out-dir ../client/src/generated && cd ../client
+            ```
+      2. Restart cursors typescript server
+
 3.  **(If dependencies changed) Install Dependencies:**
     ```bash
     npm install
@@ -127,7 +129,7 @@ vibe-bombparty/
 *   **Error Handling:** Return `Result<(), String>` for handled errors. Panics also roll back transactions.
 
 ## 8. Client (React+Tailwind+TS Details)
-
+*   **Client Generation:** The generated client always uses camel case unlike the snake case for the server 
 *   **Setup:** Use Vite `react-ts` template. Install `@clockworklabs/spacetimedb-sdk@1.0.1` (exact version), `@types/react`, `@types/react-dom`, `tailwindcss`, and `@tailwindcss/vite`.
 *   **Bindings:** Import via `import * as moduleBindings from "./generated";`. Use aliased types (e.g., `type PlayerData = moduleBindings.PlayerData;`).
 *   **Connection:** Use `moduleBindings.DbConnection.builder()...build();` pattern in a top-level `useEffect(..., [])` hook in `App.tsx`. Register `onConnect`, `onDisconnect` on the builder.

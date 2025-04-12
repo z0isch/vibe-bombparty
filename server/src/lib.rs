@@ -18,6 +18,7 @@ pub struct GameData {
     #[primary_key]
     pub id: u32, // Always 1 since we only have one game
     pub players: Vec<PlayerData>,
+    pub current_turn_index: u32, // Index of the current player's turn
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
 }
@@ -33,12 +34,22 @@ fn update_game(ctx: &ReducerContext, mut game: GameData) {
     ctx.db.game().id().update(game);
 }
 
+// Helper function to advance to the next turn
+fn advance_turn(game: &mut GameData) {
+    if game.players.is_empty() {
+        game.current_turn_index = 0;
+    } else {
+        game.current_turn_index = (game.current_turn_index + 1) % game.players.len() as u32;
+    }
+}
+
 // Initialize the game when the module is first published
 #[spacetimedb::reducer(init)]
 pub fn init(ctx: &ReducerContext) {
     let game = GameData {
         id: 1,
         players: Vec::new(),
+        current_turn_index: 0,
         created_at: ctx.timestamp,
         updated_at: ctx.timestamp,
     };
@@ -62,6 +73,28 @@ pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), Str
         }
 
         game.players.push(player);
+        update_game(ctx, game);
+        Ok(())
+    } else {
+        Err("Game not initialized".to_string())
+    }
+}
+
+#[spacetimedb::reducer]
+pub fn end_turn(ctx: &ReducerContext) -> Result<(), String> {
+    if let Some(mut game) = get_game(ctx) {
+        // Verify it's the sender's turn
+        if game.players.is_empty() {
+            return Err("No players in game".to_string());
+        }
+
+        let current_player = &game.players[game.current_turn_index as usize];
+        if current_player.identity != ctx.sender {
+            return Err("Not your turn".to_string());
+        }
+
+        // Advance to next turn
+        advance_turn(&mut game);
         update_game(ctx, game);
         Ok(())
     } else {

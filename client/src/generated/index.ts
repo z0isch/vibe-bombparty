@@ -32,6 +32,8 @@ import {
 } from "@clockworklabs/spacetimedb-sdk";
 
 // Import and reexport all reducer arg types
+import { EndTurn } from "./end_turn_reducer.ts";
+export { EndTurn };
 import { IdentityConnected } from "./identity_connected_reducer.ts";
 export { IdentityConnected };
 import { IdentityDisconnected } from "./identity_disconnected_reducer.ts";
@@ -58,6 +60,10 @@ const REMOTE_MODULE = {
     },
   },
   reducers: {
+    end_turn: {
+      reducerName: "end_turn",
+      argsType: EndTurn.getTypeScriptAlgebraicType(),
+    },
     identity_connected: {
       reducerName: "identity_connected",
       argsType: IdentityConnected.getTypeScriptAlgebraicType(),
@@ -97,6 +103,7 @@ const REMOTE_MODULE = {
 
 // A type representing all the possible variants of a reducer.
 export type Reducer = never
+| { name: "EndTurn", args: EndTurn }
 | { name: "IdentityConnected", args: IdentityConnected }
 | { name: "IdentityDisconnected", args: IdentityDisconnected }
 | { name: "RegisterPlayer", args: RegisterPlayer }
@@ -104,6 +111,18 @@ export type Reducer = never
 
 export class RemoteReducers {
   constructor(private connection: DbConnectionImpl, private setCallReducerFlags: SetReducerFlags) {}
+
+  endTurn() {
+    this.connection.callReducer("end_turn", new Uint8Array(0), this.setCallReducerFlags.endTurnFlags);
+  }
+
+  onEndTurn(callback: (ctx: ReducerEventContext) => void) {
+    this.connection.onReducer("end_turn", callback);
+  }
+
+  removeOnEndTurn(callback: (ctx: ReducerEventContext) => void) {
+    this.connection.offReducer("end_turn", callback);
+  }
 
   onIdentityConnected(callback: (ctx: ReducerEventContext) => void) {
     this.connection.onReducer("identity_connected", callback);
@@ -140,6 +159,11 @@ export class RemoteReducers {
 }
 
 export class SetReducerFlags {
+  endTurnFlags: CallReducerFlags = 'FullUpdate';
+  endTurn(flags: CallReducerFlags) {
+    this.endTurnFlags = flags;
+  }
+
   registerPlayerFlags: CallReducerFlags = 'FullUpdate';
   registerPlayer(flags: CallReducerFlags) {
     this.registerPlayerFlags = flags;

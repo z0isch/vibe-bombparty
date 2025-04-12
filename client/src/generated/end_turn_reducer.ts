@@ -30,42 +30,29 @@ import {
   Timestamp,
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
-import { PlayerData as __PlayerData } from "./player_data_type";
 
-export type GameData = {
-  id: number,
-  players: __PlayerData[],
-  currentTurnIndex: number,
-  createdAt: Timestamp,
-  updatedAt: Timestamp,
-};
+export type EndTurn = {};
 
 /**
  * A namespace for generated helper functions.
  */
-export namespace GameData {
+export namespace EndTurn {
   /**
   * A function which returns this type represented as an AlgebraicType.
   * This function is derived from the AlgebraicType used to generate this type.
   */
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
-      new ProductTypeElement("id", AlgebraicType.createU32Type()),
-      new ProductTypeElement("players", AlgebraicType.createArrayType(__PlayerData.getTypeScriptAlgebraicType())),
-      new ProductTypeElement("currentTurnIndex", AlgebraicType.createU32Type()),
-      new ProductTypeElement("createdAt", AlgebraicType.createTimestampType()),
-      new ProductTypeElement("updatedAt", AlgebraicType.createTimestampType()),
     ]);
   }
 
-  export function serialize(writer: BinaryWriter, value: GameData): void {
-    GameData.getTypeScriptAlgebraicType().serialize(writer, value);
+  export function serialize(writer: BinaryWriter, value: EndTurn): void {
+    EndTurn.getTypeScriptAlgebraicType().serialize(writer, value);
   }
 
-  export function deserialize(reader: BinaryReader): GameData {
-    return GameData.getTypeScriptAlgebraicType().deserialize(reader);
+  export function deserialize(reader: BinaryReader): EndTurn {
+    return EndTurn.getTypeScriptAlgebraicType().deserialize(reader);
   }
 
 }
-
 
