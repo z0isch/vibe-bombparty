@@ -7,64 +7,67 @@ let conn: moduleBindings.DbConnection | null = null;
 
 function App() {
   const [players, setPlayers] = useState<Map<string, PlayerData>>(new Map());
-  const [localPlayer, setLocalPlayer] = useState<PlayerData | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [connectionIdentity, setConnectionIdentity] = useState<string | null>(
+    null
+  );
+
+  // Helper function to get current player from players map
+  const getCurrentPlayer = () => {
+    if (!connectionIdentity) return null;
+    return players.get(connectionIdentity) || null;
+  };
 
   useEffect(() => {
     const connect = async () => {
       try {
         conn = await moduleBindings.DbConnection.builder()
-          .withIdentity(localStorage.getItem("identity") || undefined)
-          .withClientId("vibe-bombparty")
-          .withDatabaseName("vibe-multiplayer")
-          .withModule(moduleBindings.module)
-          .withOnIdentityReceived((identity) => {
-            localStorage.setItem("identity", identity);
+          .withUri("ws://localhost:3000")
+          .withToken(localStorage.getItem("identity") || undefined)
+          .withModuleName("vibe-bombparty")
+          .onConnect(() => {
+            setIsConnected(true);
+            console.log("Connected to SpacetimeDB");
+
+            // Store connection identity
+            if (conn?.identity) {
+              const identityStr = conn.identity.toHexString();
+              setConnectionIdentity(identityStr);
+              localStorage.setItem("identity", identityStr);
+            }
+
+            // Set up subscriptions after connection
+            if (conn) {
+              // Set up subscription
+              conn
+                .subscriptionBuilder()
+                .onApplied(() => console.log("Subscription applied"))
+                .subscribe("SELECT * FROM player");
+
+              // Register callbacks
+              conn.db.player.onInsert((ctx, player) => {
+                setPlayers((prev) => {
+                  const next = new Map(prev);
+                  next.set(player.identity.toHexString(), player);
+                  return next;
+                });
+              });
+
+              conn.db.player.onDelete((ctx, player) => {
+                setPlayers((prev) => {
+                  const next = new Map(prev);
+                  next.delete(player.identity.toHexString());
+                  return next;
+                });
+              });
+            }
+          })
+          .onDisconnect(() => {
+            setIsConnected(false);
+            setConnectionIdentity(null);
+            console.log("Disconnected from SpacetimeDB");
           })
           .build();
-
-        conn.onConnect(() => {
-          setIsConnected(true);
-          console.log("Connected to SpacetimeDB");
-        });
-
-        conn.onDisconnect(() => {
-          setIsConnected(false);
-          console.log("Disconnected from SpacetimeDB");
-        });
-
-        // Set up subscriptions
-        const sub = conn
-          .subscriptionBuilder()
-          .subscribe("SELECT * FROM player")
-          .onError((err) => console.error("Subscription error:", err))
-          .onApplied(() => console.log("Subscription applied"))
-          .build();
-
-        // Register callbacks
-        conn.db.player.onInsert((ctx, player) => {
-          setPlayers((prev) => {
-            const next = new Map(prev);
-            next.set(player.identity.toHexString(), player);
-            return next;
-          });
-
-          if (player.identity.toHexString() === conn?.identity?.toHexString()) {
-            setLocalPlayer(player);
-          }
-        });
-
-        conn.db.player.onDelete((ctx, player) => {
-          setPlayers((prev) => {
-            const next = new Map(prev);
-            next.delete(player.identity.toHexString());
-            return next;
-          });
-
-          if (player.identity.toHexString() === conn?.identity?.toHexString()) {
-            setLocalPlayer(null);
-          }
-        });
       } catch (error) {
         console.error("Failed to connect:", error);
       }
@@ -73,13 +76,13 @@ function App() {
     connect();
 
     return () => {
-      conn?.close();
+      conn?.disconnect();
       conn = null;
     };
   }, []);
 
   const handleJoinGame = async () => {
-    if (!conn || !conn.identity) return;
+    if (!conn || !connectionIdentity) return;
 
     const username = prompt("Enter your username:");
     if (!username) return;
@@ -90,6 +93,8 @@ function App() {
       console.error("Failed to join game:", error);
     }
   };
+
+  const currentPlayer = getCurrentPlayer();
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
@@ -106,7 +111,7 @@ function App() {
           </div>
         </header>
 
-        {isConnected && !localPlayer && (
+        {isConnected && !currentPlayer && (
           <button
             onClick={handleJoinGame}
             className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded"
@@ -115,12 +120,22 @@ function App() {
           </button>
         )}
 
-        {localPlayer && (
+        {currentPlayer && (
           <div className="mb-8">
             <h2 className="text-2xl mb-4">Your Profile</h2>
             <div className="bg-gray-800 p-4 rounded">
-              <p>Username: {localPlayer.username}</p>
-              <p>Score: {localPlayer.score}</p>
+              <div className="flex items-center gap-2 mb-2">
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    currentPlayer.isOnline ? "bg-green-500" : "bg-red-500"
+                  }`}
+                />
+                <p className="font-medium">{currentPlayer.username}</p>
+                <span className="text-sm text-gray-400">
+                  {currentPlayer.isOnline ? "Online" : "Offline"}
+                </span>
+              </div>
+              <p className="text-gray-300">Score: {currentPlayer.score}</p>
             </div>
           </div>
         )}
@@ -131,10 +146,25 @@ function App() {
             {Array.from(players.values()).map((player) => (
               <div
                 key={player.identity.toHexString()}
-                className="bg-gray-800 p-4 rounded"
+                className={`bg-gray-800 p-4 rounded ${
+                  currentPlayer?.identity.toHexString() ===
+                  player.identity.toHexString()
+                    ? "ring-2 ring-blue-500"
+                    : ""
+                }`}
               >
-                <p>Username: {player.username}</p>
-                <p>Score: {player.score}</p>
+                <div className="flex items-center gap-2 mb-2">
+                  <div
+                    className={`w-2 h-2 rounded-full ${
+                      player.isOnline ? "bg-green-500" : "bg-red-500"
+                    }`}
+                  />
+                  <p className="font-medium">{player.username}</p>
+                  <span className="text-sm text-gray-400">
+                    {player.isOnline ? "Online" : "Offline"}
+                  </span>
+                </div>
+                <p className="text-gray-300">Score: {player.score}</p>
               </div>
             ))}
           </div>
