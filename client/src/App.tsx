@@ -4,14 +4,26 @@ import { Identity } from "@clockworklabs/spacetimedb-sdk";
 
 type PlayerData = moduleBindings.PlayerData;
 
-let conn: moduleBindings.DbConnection | null = null;
+interface SpacetimeDBState {
+  players: Map<string, PlayerData>;
+  connectionIdentity: string | null;
+  isSubscribed: boolean;
+  currentPlayer: PlayerData | null;
+  isConnected: boolean;
+}
 
-function App() {
+interface SpacetimeDBActions {
+  registerPlayer: (username: string) => Promise<void>;
+}
+
+function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
+  const [conn, setConn] = useState<moduleBindings.DbConnection | null>(null);
   const [players, setPlayers] = useState<Map<string, PlayerData>>(new Map());
   const [connectionIdentity, setConnectionIdentity] = useState<string | null>(
     null
   );
   const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
 
   // Helper function to get current player from players map
   const getCurrentPlayer = () => {
@@ -21,7 +33,9 @@ function App() {
 
   // Set up subscription and callbacks
   useEffect(() => {
-    if (!conn || isSubscribed) return;
+    if (!conn || !isConnected || isSubscribed) return;
+
+    console.log("Setting up subscription...");
 
     // Set up subscription
     conn
@@ -65,13 +79,13 @@ function App() {
         return next;
       });
     });
-  }, [conn, isSubscribed]);
+  }, [conn, isConnected, isSubscribed]);
 
   // Set up connection
   useEffect(() => {
     const connect = async () => {
       try {
-        conn = await moduleBindings.DbConnection.builder()
+        const connection = await moduleBindings.DbConnection.builder()
           .withUri("ws://localhost:3000")
           .withToken(localStorage.getItem("token") || undefined)
           .withModuleName("vibe-bombparty")
@@ -82,6 +96,7 @@ function App() {
               token: string
             ) => {
               console.log("Connected to SpacetimeDB");
+              setIsConnected(true);
 
               // Store connection identity and token
               const identityStr = identity.toHexString();
@@ -93,9 +108,12 @@ function App() {
             setConnectionIdentity(null);
             setIsSubscribed(false);
             setPlayers(new Map());
+            setIsConnected(false);
             console.log("Disconnected from SpacetimeDB");
           })
           .build();
+
+        setConn(connection);
       } catch (error) {
         console.error("Failed to connect:", error);
       }
@@ -105,36 +123,47 @@ function App() {
 
     return () => {
       conn?.disconnect();
-      conn = null;
+      setConn(null);
     };
   }, []);
 
+  const registerPlayer = async (username: string) => {
+    if (!conn) throw new Error("Not connected to SpacetimeDB");
+    await conn.reducers.registerPlayer(username);
+  };
+
+  return [
+    {
+      players,
+      connectionIdentity,
+      isSubscribed,
+      currentPlayer: getCurrentPlayer(),
+      isConnected,
+    },
+    {
+      registerPlayer,
+    },
+  ];
+}
+
+function App() {
+  const [
+    { players, connectionIdentity, currentPlayer, isConnected },
+    { registerPlayer },
+  ] = useSpacetimeDB();
+
   const handleJoinGame = async () => {
-    if (!conn || !connectionIdentity) return;
+    if (!isConnected) return;
 
     const username = prompt("Enter your username:");
     if (!username) return;
 
     try {
-      await conn.reducers.registerPlayer(username);
+      await registerPlayer(username);
     } catch (error) {
       console.error("Failed to join game:", error);
     }
   };
-
-  const currentPlayer = getCurrentPlayer();
-
-  console.log({
-    connectionIdentity,
-    playersCount: players.size,
-    currentPlayerId: currentPlayer?.identity.toHexString(),
-    players: Array.from(players.entries()).map(([id, p]) => ({
-      id,
-      username: p.username,
-      isOnline: p.isOnline,
-      isCurrent: id === connectionIdentity,
-    })),
-  });
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
