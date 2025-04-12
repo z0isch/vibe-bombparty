@@ -40,19 +40,21 @@ import { RegisterPlayer } from "./register_player_reducer.ts";
 export { RegisterPlayer };
 
 // Import and reexport all table handle types
-import { PlayerTableHandle } from "./player_table.ts";
-export { PlayerTableHandle };
+import { GameTableHandle } from "./game_table.ts";
+export { GameTableHandle };
 
 // Import and reexport all types
+import { GameData } from "./game_data_type.ts";
+export { GameData };
 import { PlayerData } from "./player_data_type.ts";
 export { PlayerData };
 
 const REMOTE_MODULE = {
   tables: {
-    player: {
-      tableName: "player",
-      rowType: PlayerData.getTypeScriptAlgebraicType(),
-      primaryKey: "identity",
+    game: {
+      tableName: "game",
+      rowType: GameData.getTypeScriptAlgebraicType(),
+      primaryKey: "id",
     },
   },
   reducers: {
@@ -148,8 +150,8 @@ export class SetReducerFlags {
 export class RemoteTables {
   constructor(private connection: DbConnectionImpl) {}
 
-  get player(): PlayerTableHandle {
-    return new PlayerTableHandle(this.connection.clientCache.getOrCreateTable<PlayerData>(REMOTE_MODULE.tables.player));
+  get game(): GameTableHandle {
+    return new GameTableHandle(this.connection.clientCache.getOrCreateTable<GameData>(REMOTE_MODULE.tables.game));
   }
 }
 

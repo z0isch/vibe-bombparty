@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import * as moduleBindings from "./generated";
+import { GameData } from "./generated/game_data_type";
+import { PlayerData } from "./generated/player_data_type";
 import { Identity } from "@clockworklabs/spacetimedb-sdk";
 
-type PlayerData = moduleBindings.PlayerData;
-
 interface SpacetimeDBState {
-  players: Map<string, PlayerData>;
+  game: GameData | null;
   connectionIdentity: string | null;
   isSubscribed: boolean;
   currentPlayer: PlayerData | null;
@@ -18,17 +18,21 @@ interface SpacetimeDBActions {
 
 function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
   const [conn, setConn] = useState<moduleBindings.DbConnection | null>(null);
-  const [players, setPlayers] = useState<Map<string, PlayerData>>(new Map());
+  const [game, setGame] = useState<GameData | null>(null);
   const [connectionIdentity, setConnectionIdentity] = useState<string | null>(
     null
   );
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
-  // Helper function to get current player from players map
+  // Helper function to get current player from game
   const getCurrentPlayer = () => {
-    if (!connectionIdentity) return null;
-    return players.get(connectionIdentity) || null;
+    if (!connectionIdentity || !game) return null;
+    return (
+      game.players.find(
+        (p) => p.identity.toHexString() === connectionIdentity
+      ) || null
+    );
   };
 
   // Set up subscription and callbacks
@@ -48,36 +52,22 @@ function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
         console.error("Subscription error:", error);
         setIsSubscribed(false);
       })
-      .subscribe("SELECT * FROM player");
+      .subscribe("SELECT * FROM game");
 
     // Register callbacks
-    conn.db.player.onInsert((ctx, player) => {
-      console.log("Player inserted:", player.username);
-      setPlayers((prev) => {
-        const next = new Map(prev);
-        next.set(player.identity.toHexString(), player);
-        return next;
-      });
+    conn.db.game.onInsert((ctx, gameData) => {
+      console.log("Game updated:", { playerCount: gameData.players.length });
+      setGame(gameData);
     });
 
-    conn.db.player.onUpdate((ctx, player) => {
-      console.log("Player updated:", player.username, {
-        isOnline: player.isOnline,
-      });
-      setPlayers((prev) => {
-        const next = new Map(prev);
-        next.set(player.identity.toHexString(), player);
-        return next;
-      });
+    conn.db.game.onUpdate((ctx, oldGameData, newGameData) => {
+      console.log("Game updated:", { playerCount: newGameData.players.length });
+      setGame(newGameData);
     });
 
-    conn.db.player.onDelete((ctx, player) => {
-      console.log("Player deleted:", player.username);
-      setPlayers((prev) => {
-        const next = new Map(prev);
-        next.delete(player.identity.toHexString());
-        return next;
-      });
+    conn.db.game.onDelete((ctx, gameData) => {
+      console.log("Game deleted");
+      setGame(null);
     });
   }, [conn, isConnected, isSubscribed]);
 
@@ -107,7 +97,7 @@ function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
           .onDisconnect(() => {
             setConnectionIdentity(null);
             setIsSubscribed(false);
-            setPlayers(new Map());
+            setGame(null);
             setIsConnected(false);
             console.log("Disconnected from SpacetimeDB");
           })
@@ -134,7 +124,7 @@ function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
 
   return [
     {
-      players,
+      game,
       connectionIdentity,
       isSubscribed,
       currentPlayer: getCurrentPlayer(),
@@ -148,7 +138,7 @@ function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
 
 function App() {
   const [
-    { players, connectionIdentity, currentPlayer, isConnected },
+    { game, connectionIdentity, currentPlayer, isConnected },
     { registerPlayer },
   ] = useSpacetimeDB();
 
@@ -182,15 +172,39 @@ function App() {
         )}
 
         <div>
-          <h2 className="text-2xl mb-4">Players ({players.size})</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {Array.from(players.values())
+          <h2 className="text-2xl mb-4">
+            Players ({game?.players.length ?? 0})
+          </h2>
+          <div className="flex flex-col gap-2">
+            {game?.players
               .sort((a, b) => {
                 // Current player first
                 if (a.identity.toHexString() === connectionIdentity) return -1;
                 if (b.identity.toHexString() === connectionIdentity) return 1;
-                // Then sort by username
-                return a.username.localeCompare(b.username);
+
+                // Find the index of the current player
+                const currentPlayerIndex = game.players.findIndex(
+                  (p) => p.identity.toHexString() === connectionIdentity
+                );
+
+                // Get original indices of a and b
+                const indexA = game.players.findIndex(
+                  (p) => p.identity.toHexString() === a.identity.toHexString()
+                );
+                const indexB = game.players.findIndex(
+                  (p) => p.identity.toHexString() === b.identity.toHexString()
+                );
+
+                // Calculate relative positions after current player
+                const relativeA =
+                  (indexA - currentPlayerIndex + game.players.length) %
+                  game.players.length;
+                const relativeB =
+                  (indexB - currentPlayerIndex + game.players.length) %
+                  game.players.length;
+
+                // Sort by relative position
+                return relativeA - relativeB;
               })
               .map((player) => (
                 <div
