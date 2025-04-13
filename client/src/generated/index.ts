@@ -42,6 +42,8 @@ import { RegisterPlayer } from "./register_player_reducer.ts";
 export { RegisterPlayer };
 import { TurnTimeout } from "./turn_timeout_reducer.ts";
 export { TurnTimeout };
+import { UpdateCurrentWord } from "./update_current_word_reducer.ts";
+export { UpdateCurrentWord };
 
 // Import and reexport all table handle types
 import { GameTableHandle } from "./game_table.ts";
@@ -91,6 +93,10 @@ const REMOTE_MODULE = {
       reducerName: "turn_timeout",
       argsType: TurnTimeout.getTypeScriptAlgebraicType(),
     },
+    update_current_word: {
+      reducerName: "update_current_word",
+      argsType: UpdateCurrentWord.getTypeScriptAlgebraicType(),
+    },
   },
   // Constructors which are used by the DbConnectionImpl to
   // extract type information from the generated RemoteModule.
@@ -123,6 +129,7 @@ export type Reducer = never
 | { name: "IdentityDisconnected", args: IdentityDisconnected }
 | { name: "RegisterPlayer", args: RegisterPlayer }
 | { name: "TurnTimeout", args: TurnTimeout }
+| { name: "UpdateCurrentWord", args: UpdateCurrentWord }
 ;
 
 export class RemoteReducers {
@@ -188,6 +195,22 @@ export class RemoteReducers {
     this.connection.offReducer("turn_timeout", callback);
   }
 
+  updateCurrentWord(word: string) {
+    const __args = { word };
+    let __writer = new BinaryWriter(1024);
+    UpdateCurrentWord.getTypeScriptAlgebraicType().serialize(__writer, __args);
+    let __argsBuffer = __writer.getBuffer();
+    this.connection.callReducer("update_current_word", __argsBuffer, this.setCallReducerFlags.updateCurrentWordFlags);
+  }
+
+  onUpdateCurrentWord(callback: (ctx: ReducerEventContext, word: string) => void) {
+    this.connection.onReducer("update_current_word", callback);
+  }
+
+  removeOnUpdateCurrentWord(callback: (ctx: ReducerEventContext, word: string) => void) {
+    this.connection.offReducer("update_current_word", callback);
+  }
+
 }
 
 export class SetReducerFlags {
@@ -204,6 +227,11 @@ export class SetReducerFlags {
   turnTimeoutFlags: CallReducerFlags = 'FullUpdate';
   turnTimeout(flags: CallReducerFlags) {
     this.turnTimeoutFlags = flags;
+  }
+
+  updateCurrentWordFlags: CallReducerFlags = 'FullUpdate';
+  updateCurrentWord(flags: CallReducerFlags) {
+    this.updateCurrentWordFlags = flags;
   }
 
 }

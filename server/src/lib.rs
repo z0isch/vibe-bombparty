@@ -12,6 +12,7 @@ pub struct PlayerData {
     pub score: i32,
     pub last_active: Timestamp,
     pub is_online: bool,
+    pub current_word: String,
 }
 
 #[spacetimedb::table(name = game, public)]
@@ -35,6 +36,18 @@ struct TurnTimeoutSchedule {
     turn_number: u32, // Track which turn this timeout is for
 }
 
+#[derive(SpacetimeType)]
+struct TimeUpMove {}
+
+#[derive(SpacetimeType)]
+struct EndTurnMove {}
+
+#[derive(SpacetimeType)]
+enum Move {
+    TimeUp(TimeUpMove),
+    EndTurn(EndTurnMove),
+}
+
 #[spacetimedb::reducer]
 fn turn_timeout(ctx: &ReducerContext, arg: TurnTimeoutSchedule) -> Result<(), String> {
     if let Some(mut game) = get_game(ctx) {
@@ -42,7 +55,7 @@ fn turn_timeout(ctx: &ReducerContext, arg: TurnTimeoutSchedule) -> Result<(), St
         // This prevents stale timeouts from affecting newer turns
         if game.turn_number == arg.turn_number {
             // Advance to next turn (which will schedule the next timeout)
-            advance_turn(ctx, &mut game);
+            advance_turn(ctx, &mut game, Move::TimeUp(TimeUpMove {}));
             update_game(ctx, game);
             Ok(())
         } else {
@@ -66,21 +79,41 @@ fn update_game(ctx: &ReducerContext, mut game: GameData) {
 }
 
 // Helper function to advance to the next turn
-fn advance_turn(ctx: &ReducerContext, game: &mut GameData) {
+fn advance_turn(ctx: &ReducerContext, game: &mut GameData, move_type: Move) {
     if game.players.is_empty() {
         game.current_turn_index = 0;
-    } else {
-        game.current_turn_index = (game.current_turn_index + 1) % game.players.len() as u32;
-        game.turn_number += 1;
-
-        // Schedule the next turn timeout whenever we advance to a new turn
-        let timeout = TurnTimeoutSchedule {
-            scheduled_id: 0, // Auto-incremented
-            scheduled_at: (ctx.timestamp + TimeDuration::from_micros(5_000_000)).into(),
-            turn_number: game.turn_number,
-        };
-        ctx.db.turn_timeout_schedule().insert(timeout);
+        return;
     }
+
+    // Clear the current player's word
+    if let Some(current_player) = game.players.get_mut(game.current_turn_index as usize) {
+        current_player.current_word = String::new();
+    }
+
+    match move_type {
+        Move::TimeUp(_) => {
+            // For time up moves, we don't modify the current player's score
+            // Just advance to the next player
+        }
+        Move::EndTurn(_) => {
+            // For end turn moves, add 1 to the current player's score
+            if let Some(current_player) = game.players.get_mut(game.current_turn_index as usize) {
+                current_player.score += 1;
+            }
+        }
+    }
+
+    // Common logic for all move types - advance to next player
+    game.current_turn_index = (game.current_turn_index + 1) % game.players.len() as u32;
+    game.turn_number += 1;
+
+    // Schedule the next turn timeout whenever we advance to a new turn
+    let timeout = TurnTimeoutSchedule {
+        scheduled_id: 0, // Auto-incremented
+        scheduled_at: (ctx.timestamp + TimeDuration::from_micros(5_000_000)).into(),
+        turn_number: game.turn_number,
+    };
+    ctx.db.turn_timeout_schedule().insert(timeout);
 }
 
 // Initialize the game when the module is first published
@@ -105,6 +138,7 @@ pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), Str
         score: 0,
         last_active: ctx.timestamp,
         is_online: true,
+        current_word: String::new(),
     };
 
     if let Some(mut game) = get_game(ctx) {
@@ -117,7 +151,7 @@ pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), Str
 
         // If this is the first player, start the first turn
         if game.players.len() == 1 {
-            advance_turn(ctx, &mut game);
+            advance_turn(ctx, &mut game, Move::TimeUp(TimeUpMove {}));
         }
 
         update_game(ctx, game);
@@ -140,8 +174,8 @@ pub fn end_turn(ctx: &ReducerContext) -> Result<(), String> {
             return Err("Not your turn".to_string());
         }
 
-        // Advance to next turn (which will schedule the next timeout)
-        advance_turn(ctx, &mut game);
+        // Advance to next turn with EndTurn move type
+        advance_turn(ctx, &mut game, Move::EndTurn(EndTurnMove {}));
         update_game(ctx, game);
         Ok(())
     } else {
@@ -167,5 +201,27 @@ pub fn identity_disconnected(ctx: &ReducerContext) {
             player.is_online = false;
             update_game(ctx, game);
         }
+    }
+}
+
+#[spacetimedb::reducer]
+pub fn update_current_word(ctx: &ReducerContext, word: String) -> Result<(), String> {
+    if let Some(mut game) = get_game(ctx) {
+        // Find the player's index
+        if let Some(player_index) = game.players.iter().position(|p| p.identity == ctx.sender) {
+            // Verify it's the player's turn
+            if player_index as u32 != game.current_turn_index {
+                return Err("Not your turn".to_string());
+            }
+
+            // Update the player's current word
+            game.players[player_index].current_word = word;
+            update_game(ctx, game);
+            Ok(())
+        } else {
+            Err("Player not found".to_string())
+        }
+    } else {
+        Err("Game not initialized".to_string())
     }
 }

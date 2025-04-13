@@ -30,42 +30,32 @@ import {
   Timestamp,
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
-export type PlayerData = {
-  identity: Identity,
-  username: string,
-  score: number,
-  lastActive: Timestamp,
-  isOnline: boolean,
-  currentWord: string,
+
+export type UpdateCurrentWord = {
+  word: string,
 };
 
 /**
  * A namespace for generated helper functions.
  */
-export namespace PlayerData {
+export namespace UpdateCurrentWord {
   /**
   * A function which returns this type represented as an AlgebraicType.
   * This function is derived from the AlgebraicType used to generate this type.
   */
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
-      new ProductTypeElement("identity", AlgebraicType.createIdentityType()),
-      new ProductTypeElement("username", AlgebraicType.createStringType()),
-      new ProductTypeElement("score", AlgebraicType.createI32Type()),
-      new ProductTypeElement("lastActive", AlgebraicType.createTimestampType()),
-      new ProductTypeElement("isOnline", AlgebraicType.createBoolType()),
-      new ProductTypeElement("currentWord", AlgebraicType.createStringType()),
+      new ProductTypeElement("word", AlgebraicType.createStringType()),
     ]);
   }
 
-  export function serialize(writer: BinaryWriter, value: PlayerData): void {
-    PlayerData.getTypeScriptAlgebraicType().serialize(writer, value);
+  export function serialize(writer: BinaryWriter, value: UpdateCurrentWord): void {
+    UpdateCurrentWord.getTypeScriptAlgebraicType().serialize(writer, value);
   }
 
-  export function deserialize(reader: BinaryReader): PlayerData {
-    return PlayerData.getTypeScriptAlgebraicType().deserialize(reader);
+  export function deserialize(reader: BinaryReader): UpdateCurrentWord {
+    return UpdateCurrentWord.getTypeScriptAlgebraicType().deserialize(reader);
   }
 
 }
-
 
