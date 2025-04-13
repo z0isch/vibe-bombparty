@@ -52,8 +52,8 @@ import { TurnTimeoutScheduleTableHandle } from "./turn_timeout_schedule_table.ts
 export { TurnTimeoutScheduleTableHandle };
 
 // Import and reexport all types
-import { GameData } from "./game_data_type.ts";
-export { GameData };
+import { Game } from "./game_type.ts";
+export { Game };
 import { PlayerData } from "./player_data_type.ts";
 export { PlayerData };
 import { TurnTimeoutSchedule } from "./turn_timeout_schedule_type.ts";
@@ -63,7 +63,7 @@ const REMOTE_MODULE = {
   tables: {
     game: {
       tableName: "game",
-      rowType: GameData.getTypeScriptAlgebraicType(),
+      rowType: Game.getTypeScriptAlgebraicType(),
       primaryKey: "id",
     },
     turn_timeout_schedule: {
@@ -240,7 +240,7 @@ export class RemoteTables {
   constructor(private connection: DbConnectionImpl) {}
 
   get game(): GameTableHandle {
-    return new GameTableHandle(this.connection.clientCache.getOrCreateTable<GameData>(REMOTE_MODULE.tables.game));
+    return new GameTableHandle(this.connection.clientCache.getOrCreateTable<Game>(REMOTE_MODULE.tables.game));
   }
 
   get turnTimeoutSchedule(): TurnTimeoutScheduleTableHandle {

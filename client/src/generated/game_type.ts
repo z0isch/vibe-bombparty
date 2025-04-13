@@ -32,7 +32,7 @@ import {
 } from "@clockworklabs/spacetimedb-sdk";
 import { PlayerData as __PlayerData } from "./player_data_type";
 
-export type GameData = {
+export type Game = {
   id: number,
   players: __PlayerData[],
   currentTurnIndex: number,
@@ -44,7 +44,7 @@ export type GameData = {
 /**
  * A namespace for generated helper functions.
  */
-export namespace GameData {
+export namespace Game {
   /**
   * A function which returns this type represented as an AlgebraicType.
   * This function is derived from the AlgebraicType used to generate this type.
@@ -60,12 +60,12 @@ export namespace GameData {
     ]);
   }
 
-  export function serialize(writer: BinaryWriter, value: GameData): void {
-    GameData.getTypeScriptAlgebraicType().serialize(writer, value);
+  export function serialize(writer: BinaryWriter, value: Game): void {
+    Game.getTypeScriptAlgebraicType().serialize(writer, value);
   }
 
-  export function deserialize(reader: BinaryReader): GameData {
-    return GameData.getTypeScriptAlgebraicType().deserialize(reader);
+  export function deserialize(reader: BinaryReader): Game {
+    return Game.getTypeScriptAlgebraicType().deserialize(reader);
   }
 
 }

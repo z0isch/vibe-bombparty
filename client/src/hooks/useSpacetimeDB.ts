@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import * as moduleBindings from "../generated";
-import { GameData } from "../generated/game_data_type";
+import { Game } from "../generated/game_type";
 import { PlayerData } from "../generated/player_data_type";
 import { Identity } from "@clockworklabs/spacetimedb-sdk";
 
 export interface SpacetimeDBState {
-  game: GameData | null;
+  game: Game | null;
   connectionIdentity: string | null;
   isSubscribed: boolean;
   currentPlayer: PlayerData | null;
@@ -19,7 +19,7 @@ export interface SpacetimeDBActions {
 
 export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
   const [conn, setConn] = useState<moduleBindings.DbConnection | null>(null);
-  const [game, setGame] = useState<GameData | null>(null);
+  const [game, setGame] = useState<Game | null>(null);
   const [connectionIdentity, setConnectionIdentity] = useState<string | null>(
     null
   );

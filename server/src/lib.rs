@@ -17,7 +17,7 @@ pub struct PlayerData {
 
 #[spacetimedb::table(name = game, public)]
 #[derive(Clone)]
-pub struct GameData {
+pub struct Game {
     #[primary_key]
     pub id: u32, // Always 1 since we only have one game
     pub players: Vec<PlayerData>,
@@ -68,18 +68,18 @@ fn turn_timeout(ctx: &ReducerContext, arg: TurnTimeoutSchedule) -> Result<(), St
 }
 
 // Helper function to get the game
-fn get_game(ctx: &ReducerContext) -> Option<GameData> {
+fn get_game(ctx: &ReducerContext) -> Option<Game> {
     ctx.db.game().id().find(&1)
 }
 
 // Helper function to update the game
-fn update_game(ctx: &ReducerContext, mut game: GameData) {
+fn update_game(ctx: &ReducerContext, mut game: Game) {
     game.updated_at = ctx.timestamp;
     ctx.db.game().id().update(game);
 }
 
 // Helper function to advance to the next turn
-fn advance_turn(ctx: &ReducerContext, game: &mut GameData, move_type: Move) {
+fn advance_turn(ctx: &ReducerContext, game: &mut Game, move_type: Move) {
     if game.players.is_empty() {
         game.current_turn_index = 0;
         return;
@@ -119,7 +119,7 @@ fn advance_turn(ctx: &ReducerContext, game: &mut GameData, move_type: Move) {
 // Initialize the game when the module is first published
 #[spacetimedb::reducer(init)]
 pub fn init(ctx: &ReducerContext) {
-    let game = GameData {
+    let game = Game {
         id: 1,
         players: Vec::new(),
         current_turn_index: 0,
