@@ -30,41 +30,32 @@ import {
   Timestamp,
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
-import { SettingsState as __SettingsState } from "./settings_state_type";
-import { PlayerData as __PlayerData } from "./player_data_type";
 
-export type PlayingState = {
-  players: __PlayerData[],
-  currentTurnIndex: number,
-  turnNumber: number,
-  settings: __SettingsState,
+export type UpdateTurnTimeout = {
+  seconds: number,
 };
 
 /**
  * A namespace for generated helper functions.
  */
-export namespace PlayingState {
+export namespace UpdateTurnTimeout {
   /**
   * A function which returns this type represented as an AlgebraicType.
   * This function is derived from the AlgebraicType used to generate this type.
   */
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
-      new ProductTypeElement("players", AlgebraicType.createArrayType(__PlayerData.getTypeScriptAlgebraicType())),
-      new ProductTypeElement("currentTurnIndex", AlgebraicType.createU32Type()),
-      new ProductTypeElement("turnNumber", AlgebraicType.createU32Type()),
-      new ProductTypeElement("settings", __SettingsState.getTypeScriptAlgebraicType()),
+      new ProductTypeElement("seconds", AlgebraicType.createU32Type()),
     ]);
   }
 
-  export function serialize(writer: BinaryWriter, value: PlayingState): void {
-    PlayingState.getTypeScriptAlgebraicType().serialize(writer, value);
+  export function serialize(writer: BinaryWriter, value: UpdateTurnTimeout): void {
+    UpdateTurnTimeout.getTypeScriptAlgebraicType().serialize(writer, value);
   }
 
-  export function deserialize(reader: BinaryReader): PlayingState {
-    return PlayingState.getTypeScriptAlgebraicType().deserialize(reader);
+  export function deserialize(reader: BinaryReader): UpdateTurnTimeout {
+    return UpdateTurnTimeout.getTypeScriptAlgebraicType().deserialize(reader);
   }
 
 }
-
 

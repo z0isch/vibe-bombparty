@@ -44,6 +44,8 @@ import { TurnTimeout } from "./turn_timeout_reducer.ts";
 export { TurnTimeout };
 import { UpdateCurrentWord } from "./update_current_word_reducer.ts";
 export { UpdateCurrentWord };
+import { UpdateTurnTimeout } from "./update_turn_timeout_reducer.ts";
+export { UpdateTurnTimeout };
 
 // Import and reexport all table handle types
 import { GameTableHandle } from "./game_table.ts";
@@ -60,6 +62,8 @@ import { PlayerData } from "./player_data_type.ts";
 export { PlayerData };
 import { PlayingState } from "./playing_state_type.ts";
 export { PlayingState };
+import { SettingsState } from "./settings_state_type.ts";
+export { SettingsState };
 import { TurnTimeoutSchedule } from "./turn_timeout_schedule_type.ts";
 export { TurnTimeoutSchedule };
 
@@ -101,6 +105,10 @@ const REMOTE_MODULE = {
       reducerName: "update_current_word",
       argsType: UpdateCurrentWord.getTypeScriptAlgebraicType(),
     },
+    update_turn_timeout: {
+      reducerName: "update_turn_timeout",
+      argsType: UpdateTurnTimeout.getTypeScriptAlgebraicType(),
+    },
   },
   // Constructors which are used by the DbConnectionImpl to
   // extract type information from the generated RemoteModule.
@@ -134,6 +142,7 @@ export type Reducer = never
 | { name: "RegisterPlayer", args: RegisterPlayer }
 | { name: "TurnTimeout", args: TurnTimeout }
 | { name: "UpdateCurrentWord", args: UpdateCurrentWord }
+| { name: "UpdateTurnTimeout", args: UpdateTurnTimeout }
 ;
 
 export class RemoteReducers {
@@ -215,6 +224,22 @@ export class RemoteReducers {
     this.connection.offReducer("update_current_word", callback);
   }
 
+  updateTurnTimeout(seconds: number) {
+    const __args = { seconds };
+    let __writer = new BinaryWriter(1024);
+    UpdateTurnTimeout.getTypeScriptAlgebraicType().serialize(__writer, __args);
+    let __argsBuffer = __writer.getBuffer();
+    this.connection.callReducer("update_turn_timeout", __argsBuffer, this.setCallReducerFlags.updateTurnTimeoutFlags);
+  }
+
+  onUpdateTurnTimeout(callback: (ctx: ReducerEventContext, seconds: number) => void) {
+    this.connection.onReducer("update_turn_timeout", callback);
+  }
+
+  removeOnUpdateTurnTimeout(callback: (ctx: ReducerEventContext, seconds: number) => void) {
+    this.connection.offReducer("update_turn_timeout", callback);
+  }
+
 }
 
 export class SetReducerFlags {
@@ -236,6 +261,11 @@ export class SetReducerFlags {
   updateCurrentWordFlags: CallReducerFlags = 'FullUpdate';
   updateCurrentWord(flags: CallReducerFlags) {
     this.updateCurrentWordFlags = flags;
+  }
+
+  updateTurnTimeoutFlags: CallReducerFlags = 'FullUpdate';
+  updateTurnTimeout(flags: CallReducerFlags) {
+    this.updateTurnTimeoutFlags = flags;
   }
 
 }

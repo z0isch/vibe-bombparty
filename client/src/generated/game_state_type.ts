@@ -30,6 +30,7 @@ import {
   Timestamp,
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
+import { SettingsState as __SettingsState } from "./settings_state_type";
 import { PlayingState as __PlayingState } from "./playing_state_type";
 
 // A namespace for generated variants and helper functions.
@@ -37,7 +38,7 @@ export namespace GameState {
   // These are the generated variant types for each variant of the tagged union.
   // One type is generated per variant and will be used in the `value` field of
   // the tagged union.
-  export type Settings = { tag: "Settings" };
+  export type Settings = { tag: "Settings", value: __SettingsState };
   export type Playing = { tag: "Playing", value: __PlayingState };
 
   // Helper functions for constructing each variant of the tagged union.
@@ -46,12 +47,12 @@ export namespace GameState {
   // assert!(foo.tag === "A");
   // assert!(foo.value === 42);
   // ```
-  export const Settings = { tag: "Settings" };
+  export const Settings = (value: __SettingsState): GameState => ({ tag: "Settings", value });
   export const Playing = (value: __PlayingState): GameState => ({ tag: "Playing", value });
 
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createSumType([
-      new SumTypeVariant("Settings", AlgebraicType.createProductType([])),
+      new SumTypeVariant("Settings", __SettingsState.getTypeScriptAlgebraicType()),
       new SumTypeVariant("Playing", __PlayingState.getTypeScriptAlgebraicType()),
     ]);
   }
