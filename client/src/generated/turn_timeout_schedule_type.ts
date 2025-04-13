@@ -30,42 +30,34 @@ import {
   Timestamp,
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
-import { PlayerData as __PlayerData } from "./player_data_type";
-
-export type GameData = {
-  id: number,
-  players: __PlayerData[],
-  currentTurnIndex: number,
+export type TurnTimeoutSchedule = {
+  scheduledId: bigint,
+  scheduledAt: { tag: "Interval", value: TimeDuration } | { tag: "Time", value: Timestamp },
   turnNumber: number,
-  createdAt: Timestamp,
-  updatedAt: Timestamp,
 };
 
 /**
  * A namespace for generated helper functions.
  */
-export namespace GameData {
+export namespace TurnTimeoutSchedule {
   /**
   * A function which returns this type represented as an AlgebraicType.
   * This function is derived from the AlgebraicType used to generate this type.
   */
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
-      new ProductTypeElement("id", AlgebraicType.createU32Type()),
-      new ProductTypeElement("players", AlgebraicType.createArrayType(__PlayerData.getTypeScriptAlgebraicType())),
-      new ProductTypeElement("currentTurnIndex", AlgebraicType.createU32Type()),
+      new ProductTypeElement("scheduledId", AlgebraicType.createU64Type()),
+      new ProductTypeElement("scheduledAt", AlgebraicType.createScheduleAtType()),
       new ProductTypeElement("turnNumber", AlgebraicType.createU32Type()),
-      new ProductTypeElement("createdAt", AlgebraicType.createTimestampType()),
-      new ProductTypeElement("updatedAt", AlgebraicType.createTimestampType()),
     ]);
   }
 
-  export function serialize(writer: BinaryWriter, value: GameData): void {
-    GameData.getTypeScriptAlgebraicType().serialize(writer, value);
+  export function serialize(writer: BinaryWriter, value: TurnTimeoutSchedule): void {
+    TurnTimeoutSchedule.getTypeScriptAlgebraicType().serialize(writer, value);
   }
 
-  export function deserialize(reader: BinaryReader): GameData {
-    return GameData.getTypeScriptAlgebraicType().deserialize(reader);
+  export function deserialize(reader: BinaryReader): TurnTimeoutSchedule {
+    return TurnTimeoutSchedule.getTypeScriptAlgebraicType().deserialize(reader);
   }
 
 }

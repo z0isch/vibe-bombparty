@@ -40,16 +40,22 @@ import { IdentityDisconnected } from "./identity_disconnected_reducer.ts";
 export { IdentityDisconnected };
 import { RegisterPlayer } from "./register_player_reducer.ts";
 export { RegisterPlayer };
+import { TurnTimeout } from "./turn_timeout_reducer.ts";
+export { TurnTimeout };
 
 // Import and reexport all table handle types
 import { GameTableHandle } from "./game_table.ts";
 export { GameTableHandle };
+import { TurnTimeoutScheduleTableHandle } from "./turn_timeout_schedule_table.ts";
+export { TurnTimeoutScheduleTableHandle };
 
 // Import and reexport all types
 import { GameData } from "./game_data_type.ts";
 export { GameData };
 import { PlayerData } from "./player_data_type.ts";
 export { PlayerData };
+import { TurnTimeoutSchedule } from "./turn_timeout_schedule_type.ts";
+export { TurnTimeoutSchedule };
 
 const REMOTE_MODULE = {
   tables: {
@@ -57,6 +63,11 @@ const REMOTE_MODULE = {
       tableName: "game",
       rowType: GameData.getTypeScriptAlgebraicType(),
       primaryKey: "id",
+    },
+    turn_timeout_schedule: {
+      tableName: "turn_timeout_schedule",
+      rowType: TurnTimeoutSchedule.getTypeScriptAlgebraicType(),
+      primaryKey: "scheduledId",
     },
   },
   reducers: {
@@ -75,6 +86,10 @@ const REMOTE_MODULE = {
     register_player: {
       reducerName: "register_player",
       argsType: RegisterPlayer.getTypeScriptAlgebraicType(),
+    },
+    turn_timeout: {
+      reducerName: "turn_timeout",
+      argsType: TurnTimeout.getTypeScriptAlgebraicType(),
     },
   },
   // Constructors which are used by the DbConnectionImpl to
@@ -107,6 +122,7 @@ export type Reducer = never
 | { name: "IdentityConnected", args: IdentityConnected }
 | { name: "IdentityDisconnected", args: IdentityDisconnected }
 | { name: "RegisterPlayer", args: RegisterPlayer }
+| { name: "TurnTimeout", args: TurnTimeout }
 ;
 
 export class RemoteReducers {
@@ -156,6 +172,22 @@ export class RemoteReducers {
     this.connection.offReducer("register_player", callback);
   }
 
+  turnTimeout(arg: TurnTimeoutSchedule) {
+    const __args = { arg };
+    let __writer = new BinaryWriter(1024);
+    TurnTimeout.getTypeScriptAlgebraicType().serialize(__writer, __args);
+    let __argsBuffer = __writer.getBuffer();
+    this.connection.callReducer("turn_timeout", __argsBuffer, this.setCallReducerFlags.turnTimeoutFlags);
+  }
+
+  onTurnTimeout(callback: (ctx: ReducerEventContext, arg: TurnTimeoutSchedule) => void) {
+    this.connection.onReducer("turn_timeout", callback);
+  }
+
+  removeOnTurnTimeout(callback: (ctx: ReducerEventContext, arg: TurnTimeoutSchedule) => void) {
+    this.connection.offReducer("turn_timeout", callback);
+  }
+
 }
 
 export class SetReducerFlags {
@@ -169,6 +201,11 @@ export class SetReducerFlags {
     this.registerPlayerFlags = flags;
   }
 
+  turnTimeoutFlags: CallReducerFlags = 'FullUpdate';
+  turnTimeout(flags: CallReducerFlags) {
+    this.turnTimeoutFlags = flags;
+  }
+
 }
 
 export class RemoteTables {
@@ -176,6 +213,10 @@ export class RemoteTables {
 
   get game(): GameTableHandle {
     return new GameTableHandle(this.connection.clientCache.getOrCreateTable<GameData>(REMOTE_MODULE.tables.game));
+  }
+
+  get turnTimeoutSchedule(): TurnTimeoutScheduleTableHandle {
+    return new TurnTimeoutScheduleTableHandle(this.connection.clientCache.getOrCreateTable<TurnTimeoutSchedule>(REMOTE_MODULE.tables.turn_timeout_schedule));
   }
 }
 

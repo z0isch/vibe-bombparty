@@ -93,7 +93,7 @@ function App() {
           <h1 className="text-4xl font-bold mb-4">Vibe Bombparty</h1>
           {game && game.players.length > 0 && (
             <div className="text-xl text-gray-300 mb-4">
-              Turn {game.currentTurnIndex + 1}
+              Turn #{game.turnNumber}
             </div>
           )}
         </header>
