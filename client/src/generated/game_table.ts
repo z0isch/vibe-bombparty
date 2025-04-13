@@ -31,7 +31,7 @@ import {
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
 import { Game } from "./game_type";
-import { PlayerData as __PlayerData } from "./player_data_type";
+import { GameState as __GameState } from "./game_state_type";
 
 import { EventContext, Reducer, RemoteReducers, RemoteTables } from ".";
 

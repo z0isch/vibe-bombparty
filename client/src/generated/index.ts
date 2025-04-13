@@ -54,8 +54,12 @@ export { TurnTimeoutScheduleTableHandle };
 // Import and reexport all types
 import { Game } from "./game_type.ts";
 export { Game };
+import { GameState } from "./game_state_type.ts";
+export { GameState };
 import { PlayerData } from "./player_data_type.ts";
 export { PlayerData };
+import { PlayingState } from "./playing_state_type.ts";
+export { PlayingState };
 import { TurnTimeoutSchedule } from "./turn_timeout_schedule_type.ts";
 export { TurnTimeoutSchedule };
 
