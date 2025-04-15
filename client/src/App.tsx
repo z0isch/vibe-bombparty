@@ -6,7 +6,7 @@ import { GameState } from "./generated";
 
 function App() {
   const [
-    { game, connectionIdentity, currentPlayer, isConnected, conn },
+    { game, connectionIdentity, currentPlayer, playerInfos, isConnected, conn },
     { registerPlayer },
   ] = useSpacetimeDB();
 
@@ -30,9 +30,12 @@ function App() {
       case "Settings":
         return (
           <Settings
-            turnTimeoutSeconds={5} // Default value from server/src/lib.rs
+            turnTimeoutSeconds={game.state.value.turnTimeoutSeconds}
+            players={game.state.value.players}
+            playerInfos={playerInfos}
             conn={conn}
             onJoinGame={handleJoinGame}
+            isCurrentPlayer={!!currentPlayer}
           />
         );
       case "Playing":
@@ -40,6 +43,7 @@ function App() {
         return (
           <Playing
             playingState={game.state.value}
+            playerInfos={playerInfos}
             connectionIdentity={connectionIdentity}
             conn={conn}
           />

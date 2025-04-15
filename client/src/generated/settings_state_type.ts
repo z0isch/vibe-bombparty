@@ -30,8 +30,11 @@ import {
   Timestamp,
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
+import { PlayerGameData as __PlayerGameData } from "./player_game_data_type";
+
 export type SettingsState = {
   turnTimeoutSeconds: number,
+  players: __PlayerGameData[],
 };
 
 /**
@@ -45,6 +48,7 @@ export namespace SettingsState {
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
       new ProductTypeElement("turnTimeoutSeconds", AlgebraicType.createU32Type()),
+      new ProductTypeElement("players", AlgebraicType.createArrayType(__PlayerGameData.getTypeScriptAlgebraicType())),
     ]);
   }
 

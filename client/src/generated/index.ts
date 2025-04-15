@@ -40,6 +40,10 @@ import { IdentityDisconnected } from "./identity_disconnected_reducer.ts";
 export { IdentityDisconnected };
 import { RegisterPlayer } from "./register_player_reducer.ts";
 export { RegisterPlayer };
+import { StartGame } from "./start_game_reducer.ts";
+export { StartGame };
+import { SubmitWord } from "./submit_word_reducer.ts";
+export { SubmitWord };
 import { TurnTimeout } from "./turn_timeout_reducer.ts";
 export { TurnTimeout };
 import { UpdateCurrentWord } from "./update_current_word_reducer.ts";
@@ -50,6 +54,8 @@ export { UpdateTurnTimeout };
 // Import and reexport all table handle types
 import { GameTableHandle } from "./game_table.ts";
 export { GameTableHandle };
+import { PlayerInfoTableHandle } from "./player_info_table.ts";
+export { PlayerInfoTableHandle };
 import { TurnTimeoutScheduleTableHandle } from "./turn_timeout_schedule_table.ts";
 export { TurnTimeoutScheduleTableHandle };
 
@@ -58,8 +64,10 @@ import { Game } from "./game_type.ts";
 export { Game };
 import { GameState } from "./game_state_type.ts";
 export { GameState };
-import { PlayerData } from "./player_data_type.ts";
-export { PlayerData };
+import { PlayerGameData } from "./player_game_data_type.ts";
+export { PlayerGameData };
+import { PlayerInfoTable } from "./player_info_table_type.ts";
+export { PlayerInfoTable };
 import { PlayingState } from "./playing_state_type.ts";
 export { PlayingState };
 import { SettingsState } from "./settings_state_type.ts";
@@ -73,6 +81,11 @@ const REMOTE_MODULE = {
       tableName: "game",
       rowType: Game.getTypeScriptAlgebraicType(),
       primaryKey: "id",
+    },
+    player_info: {
+      tableName: "player_info",
+      rowType: PlayerInfoTable.getTypeScriptAlgebraicType(),
+      primaryKey: "identity",
     },
     turn_timeout_schedule: {
       tableName: "turn_timeout_schedule",
@@ -96,6 +109,14 @@ const REMOTE_MODULE = {
     register_player: {
       reducerName: "register_player",
       argsType: RegisterPlayer.getTypeScriptAlgebraicType(),
+    },
+    start_game: {
+      reducerName: "start_game",
+      argsType: StartGame.getTypeScriptAlgebraicType(),
+    },
+    submit_word: {
+      reducerName: "submit_word",
+      argsType: SubmitWord.getTypeScriptAlgebraicType(),
     },
     turn_timeout: {
       reducerName: "turn_timeout",
@@ -140,6 +161,8 @@ export type Reducer = never
 | { name: "IdentityConnected", args: IdentityConnected }
 | { name: "IdentityDisconnected", args: IdentityDisconnected }
 | { name: "RegisterPlayer", args: RegisterPlayer }
+| { name: "StartGame", args: StartGame }
+| { name: "SubmitWord", args: SubmitWord }
 | { name: "TurnTimeout", args: TurnTimeout }
 | { name: "UpdateCurrentWord", args: UpdateCurrentWord }
 | { name: "UpdateTurnTimeout", args: UpdateTurnTimeout }
@@ -190,6 +213,34 @@ export class RemoteReducers {
 
   removeOnRegisterPlayer(callback: (ctx: ReducerEventContext, username: string) => void) {
     this.connection.offReducer("register_player", callback);
+  }
+
+  startGame() {
+    this.connection.callReducer("start_game", new Uint8Array(0), this.setCallReducerFlags.startGameFlags);
+  }
+
+  onStartGame(callback: (ctx: ReducerEventContext) => void) {
+    this.connection.onReducer("start_game", callback);
+  }
+
+  removeOnStartGame(callback: (ctx: ReducerEventContext) => void) {
+    this.connection.offReducer("start_game", callback);
+  }
+
+  submitWord(word: string) {
+    const __args = { word };
+    let __writer = new BinaryWriter(1024);
+    SubmitWord.getTypeScriptAlgebraicType().serialize(__writer, __args);
+    let __argsBuffer = __writer.getBuffer();
+    this.connection.callReducer("submit_word", __argsBuffer, this.setCallReducerFlags.submitWordFlags);
+  }
+
+  onSubmitWord(callback: (ctx: ReducerEventContext, word: string) => void) {
+    this.connection.onReducer("submit_word", callback);
+  }
+
+  removeOnSubmitWord(callback: (ctx: ReducerEventContext, word: string) => void) {
+    this.connection.offReducer("submit_word", callback);
   }
 
   turnTimeout(arg: TurnTimeoutSchedule) {
@@ -253,6 +304,16 @@ export class SetReducerFlags {
     this.registerPlayerFlags = flags;
   }
 
+  startGameFlags: CallReducerFlags = 'FullUpdate';
+  startGame(flags: CallReducerFlags) {
+    this.startGameFlags = flags;
+  }
+
+  submitWordFlags: CallReducerFlags = 'FullUpdate';
+  submitWord(flags: CallReducerFlags) {
+    this.submitWordFlags = flags;
+  }
+
   turnTimeoutFlags: CallReducerFlags = 'FullUpdate';
   turnTimeout(flags: CallReducerFlags) {
     this.turnTimeoutFlags = flags;
@@ -275,6 +336,10 @@ export class RemoteTables {
 
   get game(): GameTableHandle {
     return new GameTableHandle(this.connection.clientCache.getOrCreateTable<Game>(REMOTE_MODULE.tables.game));
+  }
+
+  get playerInfo(): PlayerInfoTableHandle {
+    return new PlayerInfoTableHandle(this.connection.clientCache.getOrCreateTable<PlayerInfoTable>(REMOTE_MODULE.tables.player_info));
   }
 
   get turnTimeoutSchedule(): TurnTimeoutScheduleTableHandle {

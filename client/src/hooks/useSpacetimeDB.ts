@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import * as moduleBindings from "../generated";
 import { Game } from "../generated/game_type";
-import { PlayerData } from "../generated/player_data_type";
+import { PlayerGameData } from "../generated/player_game_data_type";
+import { PlayerInfoTable } from "../generated/player_info_table_type";
 import { Identity } from "@clockworklabs/spacetimedb-sdk";
 
 export interface SpacetimeDBState {
   game: Game | null;
   connectionIdentity: string | null;
   isSubscribed: boolean;
-  currentPlayer: PlayerData | null;
+  currentPlayer: PlayerGameData | null;
+  playerInfos: PlayerInfoTable[];
   isConnected: boolean;
   conn: moduleBindings.DbConnection | null;
 }
@@ -20,6 +22,7 @@ export interface SpacetimeDBActions {
 export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
   const [conn, setConn] = useState<moduleBindings.DbConnection | null>(null);
   const [game, setGame] = useState<Game | null>(null);
+  const [playerInfos, setPlayerInfos] = useState<PlayerInfoTable[]>([]);
   const [connectionIdentity, setConnectionIdentity] = useState<string | null>(
     null
   );
@@ -30,8 +33,8 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
   const getCurrentPlayer = () => {
     if (!connectionIdentity || !game) return null;
     return (
-      game.players.find(
-        (p) => p.identity.toHexString() === connectionIdentity
+      game.state.value.players.find(
+        (p) => p.playerIdentity.toHexString() === connectionIdentity
       ) || null
     );
   };
@@ -53,22 +56,49 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
         console.error("Subscription error:", error);
         setIsSubscribed(false);
       })
-      .subscribe("SELECT * FROM game");
+      .subscribe(["SELECT * FROM game", "SELECT * FROM player_info"]);
 
     // Register callbacks
     conn.db.game.onInsert((ctx, gameData) => {
-      console.log("Game updated:", { playerCount: gameData.players.length });
+      console.log("Game updated:", {
+        playerCount: gameData.state.value.players.length,
+      });
       setGame(gameData);
     });
 
     conn.db.game.onUpdate((ctx, oldGameData, newGameData) => {
-      console.log("Game updated:", { playerCount: newGameData.players.length });
+      console.log("Game updated:", {
+        playerCount: newGameData.state.value.players.length,
+      });
       setGame(newGameData);
     });
 
     conn.db.game.onDelete((ctx, gameData) => {
       console.log("Game deleted");
       setGame(null);
+    });
+
+    // Register player info callbacks
+    conn.db.playerInfo.onInsert((ctx, playerInfo) => {
+      setPlayerInfos((prev) => [...prev, playerInfo]);
+    });
+
+    conn.db.playerInfo.onUpdate((ctx, oldPlayerInfo, newPlayerInfo) => {
+      setPlayerInfos((prev) =>
+        prev.map((p) =>
+          p.identity.toHexString() === newPlayerInfo.identity.toHexString()
+            ? newPlayerInfo
+            : p
+        )
+      );
+    });
+
+    conn.db.playerInfo.onDelete((ctx, playerInfo) => {
+      setPlayerInfos((prev) =>
+        prev.filter(
+          (p) => p.identity.toHexString() !== playerInfo.identity.toHexString()
+        )
+      );
     });
   }, [conn, isConnected, isSubscribed]);
 
@@ -129,6 +159,7 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
       connectionIdentity,
       isSubscribed,
       currentPlayer: getCurrentPlayer(),
+      playerInfos,
       isConnected,
       conn,
     },

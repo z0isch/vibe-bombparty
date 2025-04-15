@@ -1,25 +1,33 @@
 import { useState } from "react";
 import { DbConnection } from "../generated";
+import { PlayerGameData } from "../generated/player_game_data_type";
+import { PlayerInfoTable } from "../generated/player_info_table_type";
 
 interface SettingsProps {
   turnTimeoutSeconds: number;
+  players: PlayerGameData[];
+  playerInfos: PlayerInfoTable[];
   conn: DbConnection;
   onJoinGame: () => void;
+  isCurrentPlayer: boolean;
 }
 
 export function Settings({
   turnTimeoutSeconds,
+  players,
+  playerInfos,
   conn,
   onJoinGame,
+  isCurrentPlayer,
 }: SettingsProps) {
   const [turnTimeout, setTurnTimeout] = useState(turnTimeoutSeconds);
 
-  const handleUpdateTurnTimeout = async () => {
+  const handleStartGame = async () => {
     if (!conn) return;
     try {
-      await conn.reducers.updateTurnTimeout(turnTimeout);
+      await conn.reducers.startGame();
     } catch (error) {
-      console.error("Failed to update turn timeout:", error);
+      console.error("Failed to start game:", error);
     }
   };
 
@@ -32,36 +40,71 @@ export function Settings({
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Turn Timeout (seconds)
             </label>
-            <div className="flex gap-2">
-              <input
-                type="number"
-                min="1"
-                value={turnTimeout}
-                onChange={(e) => setTurnTimeout(parseInt(e.target.value) || 1)}
-                className="bg-gray-700 text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                onClick={handleUpdateTurnTimeout}
-                className="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded"
-              >
-                Update
-              </button>
-            </div>
+            <input
+              type="number"
+              min="1"
+              value={turnTimeout}
+              onChange={(e) => {
+                const newTimeout = parseInt(e.target.value) || 1;
+                setTurnTimeout(newTimeout);
+                conn?.reducers.updateTurnTimeout(newTimeout);
+              }}
+              className="bg-gray-700 text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 w-32"
+            />
           </div>
         </div>
       </div>
 
       <div>
-        <button
-          onClick={onJoinGame}
-          className="bg-green-500 hover:bg-green-600 px-6 py-3 rounded text-lg font-medium"
-        >
-          Join Game
-        </button>
-        <p className="mt-2 text-sm text-gray-400">
-          Joining the game will start it if you're the first player
-        </p>
+        <h2 className="text-2xl mb-4">Players ({players.length})</h2>
+        <div className="space-y-2">
+          {players.map((player) => {
+            const playerInfo = playerInfos.find(
+              (info) =>
+                info.identity.toHexString() ===
+                player.player_identity.toHexString()
+            );
+            if (!playerInfo) return null;
+
+            return (
+              <div
+                key={player.player_identity.toHexString()}
+                className="bg-gray-800 p-4 rounded flex items-center gap-2"
+              >
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    playerInfo.isOnline ? "bg-green-500" : "bg-red-500"
+                  }`}
+                />
+                <span>{playerInfo.username}</span>
+              </div>
+            );
+          })}
+          {!isCurrentPlayer && (
+            <button
+              onClick={onJoinGame}
+              className="bg-green-500 hover:bg-green-600 px-6 py-3 rounded text-lg font-medium w-full"
+            >
+              Join Game
+            </button>
+          )}
+        </div>
       </div>
+
+      {isCurrentPlayer && players.length > 0 && (
+        <div>
+          <button
+            onClick={handleStartGame}
+            className="bg-green-500 hover:bg-green-600 px-6 py-3 rounded text-lg font-medium w-full"
+          >
+            Start Game
+          </button>
+          <p className="mt-2 text-sm text-gray-400">
+            Start the game with {players.length} player
+            {players.length !== 1 && "s"}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
