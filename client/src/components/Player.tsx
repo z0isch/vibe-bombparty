@@ -25,8 +25,11 @@ export function Player({
 
   // Update local state when server state changes
   useEffect(() => {
-    setInputWord(player.currentWord);
-  }, [player.currentWord]);
+    // Only sync with server state if it's not the current player's turn
+    if (!isCurrentPlayer || !isTheirTurn) {
+      setInputWord(player.currentWord);
+    }
+  }, [player.currentWord, isCurrentPlayer, isTheirTurn]);
 
   // Focus input when it becomes player's turn
   useEffect(() => {
@@ -43,11 +46,8 @@ export function Player({
 
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && isTheirTurn && isCurrentPlayer) {
-      try {
-        await conn.reducers.submitWord(inputWord);
-      } catch (error) {
-        console.error("Failed to submit word:", error);
-      }
+      await conn.reducers.submitWord(inputWord);
+      setInputWord(""); // Clear the input after submission
     }
   };
 
