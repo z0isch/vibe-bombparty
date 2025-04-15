@@ -95,6 +95,13 @@ export function Playing({
                 isTheirTurn={isTheirTurn}
                 onUpdateWord={handleUpdateWord}
                 conn={conn}
+                events={
+                  playingState.playerEvents.find(
+                    (pe) =>
+                      pe.playerIdentity.toHexString() ===
+                      player.playerIdentity.toHexString()
+                  )?.events
+                }
               />
             );
           })}

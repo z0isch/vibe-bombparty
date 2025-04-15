@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { PlayerGameData } from "../generated/player_game_data_type";
 import { PlayerInfoTable } from "../generated/player_info_table_type";
 import { DbConnection } from "../generated";
+import { GameStateEvent } from "../generated/game_state_event_type";
 
 interface PlayerProps {
   player: PlayerGameData;
@@ -10,6 +11,7 @@ interface PlayerProps {
   isTheirTurn: boolean;
   onUpdateWord: (word: string) => void;
   conn: DbConnection;
+  events: GameStateEvent[] | undefined;
 }
 
 export function Player({
@@ -19,8 +21,10 @@ export function Player({
   isTheirTurn,
   onUpdateWord,
   conn,
+  events,
 }: PlayerProps) {
   const [inputWord, setInputWord] = useState(player.currentWord);
+  const [isShaking, setIsShaking] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Update local state when server state changes
@@ -37,6 +41,17 @@ export function Player({
       inputRef.current.focus();
     }
   }, [isTheirTurn, isCurrentPlayer]);
+
+  // Handle invalid guess events
+  useEffect(() => {
+    const invalidGuess = events?.some((e) => e.tag === "InvalidGuess");
+    if (invalidGuess) {
+      setIsShaking(true);
+      // Reset shake animation after it completes
+      const timer = setTimeout(() => setIsShaking(false), 800);
+      return () => clearTimeout(timer);
+    }
+  }, [events]);
 
   const handleWordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newWord = e.target.value;
@@ -55,7 +70,7 @@ export function Player({
     <div
       className={`bg-gray-800 p-4 rounded ${
         isTheirTurn ? "ring-2 ring-green-500" : ""
-      }`}
+      } ${isShaking ? "shake" : ""}`}
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">

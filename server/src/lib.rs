@@ -381,6 +381,14 @@ pub fn update_current_word(ctx: &ReducerContext, word: String) -> Result<(), Str
                         return Err("Not your turn".to_string());
                     }
 
+                    if let Some(player_events) = playing_state
+                        .player_events
+                        .iter_mut()
+                        .find(|pe| pe.player_identity == ctx.sender)
+                    {
+                        player_events.events.clear();
+                    }
+
                     // Update the player's current word
                     playing_state.players[player_index].current_word = word;
                     update_game(ctx, game);
