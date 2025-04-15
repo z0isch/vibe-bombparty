@@ -325,30 +325,6 @@ pub fn identity_connected(ctx: &ReducerContext) {
         player_info.last_active = ctx.timestamp;
         ctx.db.player_info().identity().update(player_info);
     }
-
-    // Update game state
-    if let Some(mut game) = get_game(ctx) {
-        match &mut game.state {
-            GameState::Settings(settings) => {
-                if let Some(player) = settings
-                    .players
-                    .iter_mut()
-                    .find(|p| p.player_identity == ctx.sender)
-                {
-                    update_game(ctx, game);
-                }
-            }
-            GameState::Playing(playing_state) => {
-                if let Some(player) = playing_state
-                    .players
-                    .iter_mut()
-                    .find(|p| p.player_identity == ctx.sender)
-                {
-                    update_game(ctx, game);
-                }
-            }
-        }
-    }
 }
 
 #[spacetimedb::reducer(client_disconnected)]
@@ -357,30 +333,6 @@ pub fn identity_disconnected(ctx: &ReducerContext) {
     if let Some(mut player_info) = ctx.db.player_info().identity().find(&ctx.sender) {
         player_info.is_online = false;
         ctx.db.player_info().identity().update(player_info);
-    }
-
-    // Update game state
-    if let Some(mut game) = get_game(ctx) {
-        match &mut game.state {
-            GameState::Settings(settings) => {
-                if let Some(player) = settings
-                    .players
-                    .iter_mut()
-                    .find(|p| p.player_identity == ctx.sender)
-                {
-                    update_game(ctx, game);
-                }
-            }
-            GameState::Playing(playing_state) => {
-                if let Some(player) = playing_state
-                    .players
-                    .iter_mut()
-                    .find(|p| p.player_identity == ctx.sender)
-                {
-                    update_game(ctx, game);
-                }
-            }
-        }
     }
 }
 
