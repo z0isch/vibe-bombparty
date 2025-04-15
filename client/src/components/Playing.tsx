@@ -21,15 +21,66 @@ export function Playing({
     try {
       await conn.reducers.updateCurrentWord(word);
     } catch (error) {
-      console.error("Failed to update word:", error);
+      // Silently handle errors
     }
   };
 
+  const handleRestart = async () => {
+    if (!conn) return;
+    try {
+      await conn.reducers.restartGame();
+    } catch (error) {
+      // Silently handle errors
+    }
+  };
+
+  // Check if game is over (only one player has lives)
+  const isGameOver =
+    playingState.players.filter((p) => p.lives > 0).length <= 1;
+
+  // Find the winner if game is over
+  const winner = isGameOver
+    ? playingState.players.find((p) => p.lives > 0)
+    : null;
+
+  // Get winner's info
+  const winnerInfo = winner
+    ? playerInfos.find(
+        (info) =>
+          info.identity.toHexString() === winner.playerIdentity.toHexString()
+      )
+    : null;
+
   return (
     <div>
-      <div className="text-xl text-gray-300 mb-4">
-        Turn #{playingState.turnNumber}
-      </div>
+      {isGameOver ? (
+        <div className="text-center mb-8">
+          <h2 className="text-4xl font-bold mb-4 text-yellow-400">
+            Game Over!
+          </h2>
+          {winnerInfo && (
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg inline-block">
+              <div className="text-2xl mb-2">Winner:</div>
+              <div className="text-3xl font-bold text-green-400">
+                {winnerInfo.username}
+              </div>
+              <div className="mt-4 text-gray-400">
+                Survived {playingState.turnNumber} turns!
+              </div>
+              <button
+                onClick={handleRestart}
+                className="mt-6 bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded text-lg font-medium w-full"
+              >
+                Play Again
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="text-xl text-gray-300 mb-4">
+          Turn #{playingState.turnNumber}
+        </div>
+      )}
 
       <h2 className="text-2xl mb-4">Players ({playingState.players.length})</h2>
       <div className="flex flex-col gap-2">
@@ -92,7 +143,7 @@ export function Playing({
                 player={player}
                 playerInfo={playerInfo}
                 isCurrentPlayer={isCurrentPlayer}
-                isTheirTurn={isTheirTurn}
+                isTheirTurn={isTheirTurn && !isGameOver}
                 onUpdateWord={handleUpdateWord}
                 conn={conn}
                 events={

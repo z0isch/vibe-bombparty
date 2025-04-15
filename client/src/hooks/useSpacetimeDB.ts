@@ -46,7 +46,7 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
     if (newGameData.state.tag !== "Playing") return;
 
     newGameData.state.value.playerEvents.forEach((playerEvent) => {
-      playSound(playerEvent);
+      playSound(playerEvent, conn?.identity);
     });
   };
 

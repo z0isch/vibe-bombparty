@@ -51,6 +51,7 @@ vibe-bombparty/
 │   │   ├── assets/
 │   │   ├── components/ # React components
 │   │   ├── generated/  # Auto-generated TS bindings
+│   │   ├-- hooks/ #hooks 
 │   │   ├── App.tsx     # Main React component
 │   │   ├── index.css   # Tailwind import
 │   │   └── main.tsx    # React entry point
@@ -140,6 +141,7 @@ vibe-bombparty/
 *   **Identity Comparison:** Use `.toHexString()` for reliable comparison and map keys.
 *   **Subscriptions:** Use `conn.subscriptionBuilder()`. Call `.subscribe("SELECT * FROM table_name")` (snake_case, case-sensitive). Register `.onApplied()` and `.onError()` callbacks on the builder.
 *   **JSX/TS Config:** Ensure `tsconfig.app.json` (or `tsconfig.json`) has `compilerOptions.jsx` set to `"react-jsx"`. Files with JSX need the `.tsx` extension.
+*   **Sounds** Sounds are played by reacting to player events and should be done inside the `useSoundEffects` hook
 
 ## 9. Multiplayer Architecture
 

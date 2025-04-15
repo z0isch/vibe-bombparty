@@ -38,6 +38,8 @@ import { IdentityDisconnected } from "./identity_disconnected_reducer.ts";
 export { IdentityDisconnected };
 import { RegisterPlayer } from "./register_player_reducer.ts";
 export { RegisterPlayer };
+import { RestartGame } from "./restart_game_reducer.ts";
+export { RestartGame };
 import { StartGame } from "./start_game_reducer.ts";
 export { StartGame };
 import { SubmitWord } from "./submit_word_reducer.ts";
@@ -110,6 +112,10 @@ const REMOTE_MODULE = {
       reducerName: "register_player",
       argsType: RegisterPlayer.getTypeScriptAlgebraicType(),
     },
+    restart_game: {
+      reducerName: "restart_game",
+      argsType: RestartGame.getTypeScriptAlgebraicType(),
+    },
     start_game: {
       reducerName: "start_game",
       argsType: StartGame.getTypeScriptAlgebraicType(),
@@ -160,6 +166,7 @@ export type Reducer = never
 | { name: "IdentityConnected", args: IdentityConnected }
 | { name: "IdentityDisconnected", args: IdentityDisconnected }
 | { name: "RegisterPlayer", args: RegisterPlayer }
+| { name: "RestartGame", args: RestartGame }
 | { name: "StartGame", args: StartGame }
 | { name: "SubmitWord", args: SubmitWord }
 | { name: "TurnTimeout", args: TurnTimeout }
@@ -200,6 +207,18 @@ export class RemoteReducers {
 
   removeOnRegisterPlayer(callback: (ctx: ReducerEventContext, username: string) => void) {
     this.connection.offReducer("register_player", callback);
+  }
+
+  restartGame() {
+    this.connection.callReducer("restart_game", new Uint8Array(0), this.setCallReducerFlags.restartGameFlags);
+  }
+
+  onRestartGame(callback: (ctx: ReducerEventContext) => void) {
+    this.connection.onReducer("restart_game", callback);
+  }
+
+  removeOnRestartGame(callback: (ctx: ReducerEventContext) => void) {
+    this.connection.offReducer("restart_game", callback);
   }
 
   startGame() {
@@ -284,6 +303,11 @@ export class SetReducerFlags {
   registerPlayerFlags: CallReducerFlags = 'FullUpdate';
   registerPlayer(flags: CallReducerFlags) {
     this.registerPlayerFlags = flags;
+  }
+
+  restartGameFlags: CallReducerFlags = 'FullUpdate';
+  restartGame(flags: CallReducerFlags) {
+    this.restartGameFlags = flags;
   }
 
   startGameFlags: CallReducerFlags = 'FullUpdate';

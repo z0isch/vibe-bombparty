@@ -19,7 +19,7 @@ function App() {
     try {
       await registerPlayer(username);
     } catch (error) {
-      console.error("Failed to join game:", error);
+      // Silently handle errors
     }
   };
 

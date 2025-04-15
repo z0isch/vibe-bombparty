@@ -38,6 +38,11 @@ export namespace GameStateEvent {
   // One type is generated per variant and will be used in the `value` field of
   // the tagged union.
   export type InvalidGuess = { tag: "InvalidGuess", value: __InvalidGuessEvent };
+  export type TimeUp = { tag: "TimeUp" };
+  export type MyTurn = { tag: "MyTurn" };
+  export type IWin = { tag: "IWin" };
+  export type ILose = { tag: "ILose" };
+  export type CorrectGuess = { tag: "CorrectGuess" };
 
   // Helper functions for constructing each variant of the tagged union.
   // ```
@@ -46,10 +51,20 @@ export namespace GameStateEvent {
   // assert!(foo.value === 42);
   // ```
   export const InvalidGuess = (value: __InvalidGuessEvent): GameStateEvent => ({ tag: "InvalidGuess", value });
+  export const TimeUp = { tag: "TimeUp" };
+  export const MyTurn = { tag: "MyTurn" };
+  export const IWin = { tag: "IWin" };
+  export const ILose = { tag: "ILose" };
+  export const CorrectGuess = { tag: "CorrectGuess" };
 
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createSumType([
       new SumTypeVariant("InvalidGuess", __InvalidGuessEvent.getTypeScriptAlgebraicType()),
+      new SumTypeVariant("TimeUp", AlgebraicType.createProductType([])),
+      new SumTypeVariant("MyTurn", AlgebraicType.createProductType([])),
+      new SumTypeVariant("IWin", AlgebraicType.createProductType([])),
+      new SumTypeVariant("ILose", AlgebraicType.createProductType([])),
+      new SumTypeVariant("CorrectGuess", AlgebraicType.createProductType([])),
     ]);
   }
 
@@ -64,7 +79,7 @@ export namespace GameStateEvent {
 }
 
 // The tagged union or sum type for the algebraic type `GameStateEvent`.
-export type GameStateEvent = GameStateEvent.InvalidGuess;
+export type GameStateEvent = GameStateEvent.InvalidGuess | GameStateEvent.TimeUp | GameStateEvent.MyTurn | GameStateEvent.IWin | GameStateEvent.ILose | GameStateEvent.CorrectGuess;
 
 export default GameStateEvent;
 

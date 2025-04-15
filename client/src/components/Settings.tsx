@@ -32,7 +32,7 @@ export function Settings({
     try {
       await conn.reducers.startGame();
     } catch (error) {
-      console.error("Failed to start game:", error);
+      // Silently handle errors
     }
   };
 

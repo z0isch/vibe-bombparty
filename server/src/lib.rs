@@ -12,6 +12,7 @@ mod player_logic;
 pub struct PlayerGameData {
     pub player_identity: Identity, // Reference to PlayerInfo
     pub current_word: String,
+    pub lives: i32,
 }
 
 #[spacetimedb::table(name = player_info, public)]
@@ -58,6 +59,11 @@ pub struct InvalidGuessEvent {
 #[derive(Clone, SpacetimeType)]
 pub enum GameStateEvent {
     InvalidGuess(InvalidGuessEvent),
+    TimeUp,
+    MyTurn,
+    IWin,
+    ILose,
+    CorrectGuess,
 }
 
 #[spacetimedb::table(name = game, public)]
@@ -128,18 +134,53 @@ fn schedule_turn_timeout(ctx: &ReducerContext, state: &PlayingState) {
     ctx.db.turn_timeout_schedule().insert(timeout);
 }
 
+// Helper function to check if game is over (only one player has lives)
+fn is_game_over(state: &PlayingState) -> bool {
+    let players_with_lives = state.players.iter().filter(|p| p.lives > 0).count();
+    players_with_lives <= 1
+}
+
+// Helper function to emit game over events
+fn emit_game_over_events(state: &mut PlayingState) {
+    // Find the winner (player with lives > 0)
+    let winner = state.players.iter().find(|p| p.lives > 0);
+
+    // Emit events to all players
+    for player_events in &mut state.player_events {
+        let is_winner = winner.map_or(false, |w| {
+            w.player_identity == player_events.player_identity
+        });
+        player_events.events.push(if is_winner {
+            GameStateEvent::IWin
+        } else {
+            GameStateEvent::ILose
+        });
+    }
+}
+
 // Helper function to handle end of turn logic
 fn end_turn(state: &mut PlayingState, ctx: &ReducerContext) {
     // Clear current word and advance to next player
     let current_player = &mut state.players[state.current_turn_index as usize];
     current_player.current_word = String::new();
 
-    // Advance to next player
-    state.current_turn_index = (state.current_turn_index + 1) % state.players.len() as u32;
-    state.turn_number += 1;
+    // Only continue the game if more than one player has lives
+    if !is_game_over(state) {
+        // Find next player with lives
+        let mut next_index = (state.current_turn_index + 1) % state.players.len() as u32;
+        while state.players[next_index as usize].lives == 0 {
+            next_index = (next_index + 1) % state.players.len() as u32;
+        }
 
-    // Schedule timeout for the next player's turn
-    schedule_turn_timeout(ctx, state);
+        state.current_turn_index = next_index;
+        state.turn_number += 1;
+
+        // Schedule timeout for the next player's turn
+        schedule_turn_timeout(ctx, state);
+    } else {
+        // Game is over, emit events
+        emit_game_over_events(state);
+    }
 }
 
 // Helper function to initialize empty events for all players
@@ -168,12 +209,46 @@ fn make_move(
                 return Err("No players in game".to_string());
             }
 
+            // Don't allow moves if game is over
+            if is_game_over(state) {
+                return Err("Game is over".to_string());
+            }
+
             // Clear all events at the start of each move
             state.player_events = init_player_events(&state.players);
 
             match game_move {
                 Move::TimeUp => {
+                    // Get current player before modifying state
+                    let current_player_id =
+                        state.players[state.current_turn_index as usize].player_identity;
+
+                    // Emit TimeUp event to the current player
+                    if let Some(player_events) = state
+                        .player_events
+                        .iter_mut()
+                        .find(|pe| pe.player_identity == current_player_id)
+                    {
+                        player_events.events.push(GameStateEvent::TimeUp);
+                    }
+
+                    // Decrease lives on timeout
+                    let current_player = &mut state.players[state.current_turn_index as usize];
+                    current_player.lives = (current_player.lives - 1).max(0);
                     end_turn(state, ctx);
+
+                    // If game isn't over, emit MyTurn event to the next player
+                    if !is_game_over(state) {
+                        let next_player_id =
+                            state.players[state.current_turn_index as usize].player_identity;
+                        if let Some(player_events) = state
+                            .player_events
+                            .iter_mut()
+                            .find(|pe| pe.player_identity == next_player_id)
+                        {
+                            player_events.events.push(GameStateEvent::MyTurn);
+                        }
+                    }
                 }
                 Move::GuessWord(guess) => {
                     // Verify it's the player's turn
@@ -201,8 +276,30 @@ fn make_move(
                         current_player.current_word = String::new();
                         // Don't advance turn, let them try again
                     } else {
-                        // Word is valid - end turn
+                        // Word is valid - emit CorrectGuess event to current player
+                        if let Some(player_events) = state
+                            .player_events
+                            .iter_mut()
+                            .find(|pe| pe.player_identity == player_identity)
+                        {
+                            player_events.events.push(GameStateEvent::CorrectGuess);
+                        }
+
+                        // End turn
                         end_turn(state, ctx);
+
+                        // If game isn't over, emit MyTurn event to the next player
+                        if !is_game_over(state) {
+                            let next_player_id =
+                                state.players[state.current_turn_index as usize].player_identity;
+                            if let Some(player_events) = state
+                                .player_events
+                                .iter_mut()
+                                .find(|pe| pe.player_identity == next_player_id)
+                            {
+                                player_events.events.push(GameStateEvent::MyTurn);
+                            }
+                        }
                     }
                 }
             }
@@ -273,6 +370,7 @@ pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), Str
     let player = PlayerGameData {
         player_identity: ctx.sender,
         current_word: String::new(),
+        lives: 3, // Start with 3 lives
     };
 
     // Insert player info into the table
@@ -314,7 +412,7 @@ pub fn start_game(ctx: &ReducerContext) -> Result<(), String> {
                 let settings_clone = settings.clone();
 
                 // Transition to playing state
-                let playing_state = PlayingState {
+                let mut playing_state = PlayingState {
                     players: settings_clone.players.clone(),
                     current_turn_index: 0,
                     turn_number: 0,
@@ -324,6 +422,15 @@ pub fn start_game(ctx: &ReducerContext) -> Result<(), String> {
                     },
                     player_events: init_player_events(&settings_clone.players),
                 };
+
+                // Emit MyTurn event to the first player
+                if let Some(player_events) = playing_state
+                    .player_events
+                    .iter_mut()
+                    .find(|pe| pe.player_identity == playing_state.players[0].player_identity)
+                {
+                    player_events.events.push(GameStateEvent::MyTurn);
+                }
 
                 // Schedule the first turn timeout
                 schedule_turn_timeout(ctx, &playing_state);
@@ -375,13 +482,8 @@ pub fn update_current_word(ctx: &ReducerContext, word: String) -> Result<(), Str
                         return Err("Not your turn".to_string());
                     }
 
-                    if let Some(player_events) = playing_state
-                        .player_events
-                        .iter_mut()
-                        .find(|pe| pe.player_identity == ctx.sender)
-                    {
-                        player_events.events.clear();
-                    }
+                    // Clear all player events
+                    playing_state.player_events = init_player_events(&playing_state.players);
 
                     // Update the player's current word
                     playing_state.players[player_index].current_word = word;
@@ -438,6 +540,42 @@ fn turn_timeout(ctx: &ReducerContext, arg: TurnTimeoutSchedule) -> Result<(), St
                 }
                 Ok(())
             }
+        }
+    } else {
+        Err("Game not initialized".to_string())
+    }
+}
+
+#[spacetimedb::reducer]
+pub fn restart_game(ctx: &ReducerContext) -> Result<(), String> {
+    if let Some(mut game) = get_game(ctx) {
+        match &game.state {
+            GameState::Playing(playing_state) => {
+                // Only allow restart if game is over
+                if !is_game_over(playing_state) {
+                    return Err("Cannot restart game that is not over".to_string());
+                }
+
+                // Reset all players' lives and words
+                let reset_players: Vec<PlayerGameData> = playing_state
+                    .players
+                    .iter()
+                    .map(|p| PlayerGameData {
+                        player_identity: p.player_identity,
+                        current_word: String::new(),
+                        lives: 3, // Reset to initial lives
+                    })
+                    .collect();
+
+                // Transition back to settings state
+                game.state = GameState::Settings(SettingsState {
+                    turn_timeout_seconds: playing_state.settings.turn_timeout_seconds,
+                    players: reset_players,
+                });
+                update_game(ctx, game);
+                Ok(())
+            }
+            GameState::Settings(_) => Err("Game is already in settings state".to_string()),
         }
     } else {
         Err("Game not initialized".to_string())
