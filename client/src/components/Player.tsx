@@ -8,7 +8,6 @@ interface PlayerProps {
   playerInfo: PlayerInfoTable;
   isCurrentPlayer: boolean;
   isTheirTurn: boolean;
-  onEndTurn: () => void;
   onUpdateWord: (word: string) => void;
   conn: DbConnection;
 }
@@ -18,7 +17,6 @@ export function Player({
   playerInfo,
   isCurrentPlayer,
   isTheirTurn,
-  onEndTurn,
   onUpdateWord,
   conn,
 }: PlayerProps) {
@@ -68,14 +66,6 @@ export function Player({
           />
           <p className="font-medium">{playerInfo.username}</p>
         </div>
-        {isTheirTurn && isCurrentPlayer && (
-          <button
-            onClick={onEndTurn}
-            className="bg-green-500 hover:bg-green-600 px-4 py-1 rounded text-sm"
-          >
-            End Turn
-          </button>
-        )}
       </div>
       <p className="text-gray-300 mb-2">Score: {player.score}</p>
       <div className="mt-2">

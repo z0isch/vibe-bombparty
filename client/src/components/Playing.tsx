@@ -16,15 +16,6 @@ export function Playing({
   connectionIdentity,
   conn,
 }: PlayingProps) {
-  const handleEndTurn = async () => {
-    if (!conn) return;
-    try {
-      await conn.reducers.endTurn();
-    } catch (error) {
-      console.error("Failed to end turn:", error);
-    }
-  };
-
   const handleUpdateWord = async (word: string) => {
     if (!conn) return;
     try {
@@ -102,7 +93,6 @@ export function Playing({
                 playerInfo={playerInfo}
                 isCurrentPlayer={isCurrentPlayer}
                 isTheirTurn={isTheirTurn}
-                onEndTurn={handleEndTurn}
                 onUpdateWord={handleUpdateWord}
                 conn={conn}
               />

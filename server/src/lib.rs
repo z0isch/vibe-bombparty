@@ -78,7 +78,6 @@ struct SubmitWordMove {
 #[derive(SpacetimeType)]
 enum Move {
     TimeUp(TimeUpMove),
-    EndTurn(EndTurnMove),
     SubmitWord(SubmitWordMove),
 }
 
@@ -153,15 +152,6 @@ fn advance_turn(ctx: &ReducerContext, game: &mut Game, move_type: Move) -> Resul
                 Move::TimeUp(_) => {
                     // For time up moves, we don't modify the current player's score
                     // Just advance to the next player
-                }
-                Move::EndTurn(_) => {
-                    // For end turn moves, add 1 to the current player's score
-                    if let Some(current_player) = playing_state
-                        .players
-                        .get_mut(playing_state.current_turn_index as usize)
-                    {
-                        current_player.score += 1;
-                    }
                 }
                 Move::SubmitWord(submit_move) => {
                     // For submit word moves, add points based on word length
@@ -321,34 +311,6 @@ pub fn start_game(ctx: &ReducerContext) -> Result<(), String> {
                 Ok(())
             }
             GameState::Playing(_) => Err("Game already started".to_string()),
-        }
-    } else {
-        Err("Game not initialized".to_string())
-    }
-}
-
-#[spacetimedb::reducer]
-pub fn end_turn(ctx: &ReducerContext) -> Result<(), String> {
-    if let Some(mut game) = get_game(ctx) {
-        match &mut game.state {
-            GameState::Settings(_) => Err("Game not in playing state".to_string()),
-            GameState::Playing(playing_state) => {
-                // Verify it's the sender's turn
-                if playing_state.players.is_empty() {
-                    return Err("No players in game".to_string());
-                }
-
-                let current_player =
-                    &playing_state.players[playing_state.current_turn_index as usize];
-                if current_player.player_identity != ctx.sender {
-                    return Err("Not your turn".to_string());
-                }
-
-                // Advance to next turn with EndTurn move type
-                advance_turn(ctx, &mut game, Move::EndTurn(EndTurnMove {}))?;
-                update_game(ctx, game);
-                Ok(())
-            }
         }
     } else {
         Err("Game not initialized".to_string())
