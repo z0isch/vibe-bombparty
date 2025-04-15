@@ -1,12 +1,24 @@
 use bincode::deserialize;
 use serde::Deserialize;
 use spacetimedb::{
-    Identity, ReducerContext, ScheduleAt, SpacetimeType, Table, TimeDuration, Timestamp,
+    rand::RngCore, Identity, ReducerContext, ScheduleAt, SpacetimeType, Table, TimeDuration,
+    Timestamp,
 };
 use std::collections::HashSet;
 
 mod common;
 mod player_logic;
+
+#[derive(Deserialize)]
+struct TrigramData {
+    trigrams: Vec<TrigramFreq>,
+}
+
+#[derive(Deserialize)]
+struct TrigramFreq {
+    trigram: String,
+    frequency: u32,
+}
 
 #[derive(Clone, SpacetimeType)]
 pub struct PlayerGameData {
@@ -43,6 +55,9 @@ pub struct PlayingState {
     pub turn_number: u32,        // Total number of turns that have occurred
     pub settings: SettingsState, // Settings preserved from settings state
     pub player_events: Vec<PlayerEvents>, // Events per player
+    pub current_trigram: String, // Current trigram that must be contained in valid words
+    pub failed_players: Vec<Identity>, // Players who have failed with the current trigram
+    pub used_words: Vec<String>, // Track words that have been used
 }
 
 #[derive(Clone, SpacetimeType)]
@@ -54,6 +69,7 @@ pub struct SettingsState {
 #[derive(Clone, SpacetimeType)]
 pub struct InvalidGuessEvent {
     pub word: String,
+    pub reason: String,
 }
 
 #[derive(Clone, SpacetimeType)]
@@ -114,12 +130,18 @@ struct WordSet {
 }
 
 static WORD_SET_BYTES: &[u8] = include_bytes!("../assets/words.bin");
+static TRIGRAM_DATA_BYTES: &[u8] = include_bytes!("../assets/histogram.bin");
 
 lazy_static::lazy_static! {
     static ref VALID_WORDS: HashSet<String> = {
         let word_set: WordSet = deserialize(WORD_SET_BYTES)
             .expect("Failed to deserialize word set");
         word_set.words
+    };
+
+    static ref TRIGRAM_DATA: TrigramData = {
+        deserialize(TRIGRAM_DATA_BYTES)
+            .expect("Failed to deserialize trigram data")
     };
 }
 
@@ -194,6 +216,20 @@ fn init_player_events(players: &[PlayerGameData]) -> Vec<PlayerEvents> {
         .collect()
 }
 
+// Helper function to check if a word is valid
+fn is_word_valid(word: &str, trigram: &str, used_words: &[String]) -> Result<(), String> {
+    if !VALID_WORDS.contains(word) {
+        return Err("Word not in dictionary".to_string());
+    }
+    if !word.contains(trigram) {
+        return Err(format!("Word does not contain trigram '{}'", trigram));
+    }
+    if used_words.contains(&word.to_string()) {
+        return Err("Word has already been used".to_string());
+    }
+    Ok(())
+}
+
 fn make_move(
     game: &mut Game,
     game_move: Move,
@@ -232,9 +268,33 @@ fn make_move(
                         player_events.events.push(GameStateEvent::TimeUp);
                     }
 
+                    // Add player to failed_players list
+                    if !state.failed_players.contains(&current_player_id) {
+                        state.failed_players.push(current_player_id);
+                    }
+
                     // Decrease lives on timeout
                     let current_player = &mut state.players[state.current_turn_index as usize];
                     current_player.lives = (current_player.lives - 1).max(0);
+
+                    // Check if all players with lives have failed with this trigram
+                    let active_players: Vec<_> = state
+                        .players
+                        .iter()
+                        .filter(|p| p.lives > 0)
+                        .map(|p| p.player_identity)
+                        .collect();
+
+                    let all_active_failed = active_players
+                        .iter()
+                        .all(|id| state.failed_players.contains(id));
+
+                    // If all active players have failed, pick a new trigram
+                    if all_active_failed {
+                        state.current_trigram = pick_random_trigram(ctx);
+                        state.failed_players.clear();
+                    }
+
                     end_turn(state, ctx);
 
                     // If game isn't over, emit MyTurn event to the next player
@@ -261,44 +321,55 @@ fn make_move(
                     let word = guess.word.trim().to_uppercase();
 
                     // Check if word is valid
-                    if !VALID_WORDS.contains(&word) {
-                        if let Some(player_events) = state
-                            .player_events
-                            .iter_mut()
-                            .find(|pe| pe.player_identity == player_identity)
-                        {
-                            player_events
-                                .events
-                                .push(GameStateEvent::InvalidGuess(InvalidGuessEvent { word }));
-                        }
-                        // Clear the current word on invalid guess
-                        let current_player = &mut state.players[state.current_turn_index as usize];
-                        current_player.current_word = String::new();
-                        // Don't advance turn, let them try again
-                    } else {
-                        // Word is valid - emit CorrectGuess event to current player
-                        if let Some(player_events) = state
-                            .player_events
-                            .iter_mut()
-                            .find(|pe| pe.player_identity == player_identity)
-                        {
-                            player_events.events.push(GameStateEvent::CorrectGuess);
-                        }
-
-                        // End turn
-                        end_turn(state, ctx);
-
-                        // If game isn't over, emit MyTurn event to the next player
-                        if !is_game_over(state) {
-                            let next_player_id =
-                                state.players[state.current_turn_index as usize].player_identity;
+                    match is_word_valid(&word, &state.current_trigram, &state.used_words) {
+                        Ok(()) => {
+                            // Word is valid - emit CorrectGuess event to current player
                             if let Some(player_events) = state
                                 .player_events
                                 .iter_mut()
-                                .find(|pe| pe.player_identity == next_player_id)
+                                .find(|pe| pe.player_identity == player_identity)
                             {
-                                player_events.events.push(GameStateEvent::MyTurn);
+                                player_events.events.push(GameStateEvent::CorrectGuess);
                             }
+
+                            // Add word to used words list
+                            state.used_words.push(word);
+
+                            // Pick a new trigram on successful word
+                            state.current_trigram = pick_random_trigram(ctx);
+                            state.failed_players.clear();
+
+                            end_turn(state, ctx);
+
+                            // If game isn't over, emit MyTurn event to the next player
+                            if !is_game_over(state) {
+                                let next_player_id = state.players
+                                    [state.current_turn_index as usize]
+                                    .player_identity;
+                                if let Some(player_events) = state
+                                    .player_events
+                                    .iter_mut()
+                                    .find(|pe| pe.player_identity == next_player_id)
+                                {
+                                    player_events.events.push(GameStateEvent::MyTurn);
+                                }
+                            }
+                        }
+                        Err(reason) => {
+                            if let Some(player_events) = state
+                                .player_events
+                                .iter_mut()
+                                .find(|pe| pe.player_identity == player_identity)
+                            {
+                                player_events.events.push(GameStateEvent::InvalidGuess(
+                                    InvalidGuessEvent { word, reason },
+                                ));
+                            }
+                            // Clear the current word on invalid guess
+                            let current_player =
+                                &mut state.players[state.current_turn_index as usize];
+                            current_player.current_word = String::new();
+                            // Don't advance turn, let them try again
                         }
                     }
                 }
@@ -313,6 +384,23 @@ fn make_move(
 // Helper function to get the game
 fn get_game(ctx: &ReducerContext) -> Option<Game> {
     ctx.db.game().id().find(&1)
+}
+
+// Helper function to pick a random trigram
+fn pick_random_trigram(ctx: &ReducerContext) -> String {
+    // Filter trigrams to only those with frequency > 200
+    let high_frequency_trigrams: Vec<&TrigramFreq> = TRIGRAM_DATA
+        .trigrams
+        .iter()
+        .filter(|t| t.frequency > 200)
+        .collect();
+
+    let total_trigrams = high_frequency_trigrams.len();
+    let random_index = ctx.rng().next_u32() as usize % total_trigrams;
+    high_frequency_trigrams[random_index]
+        .trigram
+        .clone()
+        .to_uppercase()
 }
 
 // Helper function to update the game
@@ -360,21 +448,29 @@ pub fn update_turn_timeout(ctx: &ReducerContext, seconds: u32) -> Result<(), Str
 
 #[spacetimedb::reducer]
 pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), String> {
-    let player_info = PlayerInfoTable {
-        identity: ctx.sender,
-        username,
-        is_online: true,
-        last_active: ctx.timestamp,
-    };
-
     let player = PlayerGameData {
         player_identity: ctx.sender,
         current_word: String::new(),
         lives: 3, // Start with 3 lives
     };
 
-    // Insert player info into the table
-    ctx.db.player_info().insert(player_info);
+    // Check if player info already exists
+    if let Some(mut existing_player_info) = ctx.db.player_info().identity().find(&ctx.sender) {
+        // Update existing player info
+        existing_player_info.is_online = true;
+        existing_player_info.last_active = ctx.timestamp;
+        existing_player_info.username = username;
+        ctx.db.player_info().identity().update(existing_player_info);
+    } else {
+        // Create new player info
+        let player_info = PlayerInfoTable {
+            identity: ctx.sender,
+            username,
+            is_online: true,
+            last_active: ctx.timestamp,
+        };
+        ctx.db.player_info().insert(player_info);
+    }
 
     if let Some(mut game) = get_game(ctx) {
         match &mut game.state {
@@ -400,6 +496,33 @@ pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), Str
 }
 
 #[spacetimedb::reducer]
+pub fn remove_player(ctx: &ReducerContext, player_identity: Identity) -> Result<(), String> {
+    if let Some(mut game) = get_game(ctx) {
+        match &mut game.state {
+            GameState::Settings(settings) => {
+                // Remove player from settings state
+                if let Some(index) = settings
+                    .players
+                    .iter()
+                    .position(|p| p.player_identity == player_identity)
+                {
+                    settings.players.remove(index);
+                    update_game(ctx, game);
+                    Ok(())
+                } else {
+                    Err("Player not found".to_string())
+                }
+            }
+            GameState::Playing(_) => {
+                Err("Cannot remove player while game is in progress".to_string())
+            }
+        }
+    } else {
+        Err("Game not initialized".to_string())
+    }
+}
+
+#[spacetimedb::reducer]
 pub fn start_game(ctx: &ReducerContext) -> Result<(), String> {
     if let Some(mut game) = get_game(ctx) {
         match &game.state {
@@ -411,24 +534,32 @@ pub fn start_game(ctx: &ReducerContext) -> Result<(), String> {
                 // Clone the settings first so we don't have multiple borrows
                 let settings_clone = settings.clone();
 
+                // Generate random starting player index using the reducer context's random generator
+                let starting_index = ctx.rng().next_u32() % settings_clone.players.len() as u32;
+
+                // Pick initial random trigram
+                let initial_trigram = pick_random_trigram(ctx);
+
                 // Transition to playing state
                 let mut playing_state = PlayingState {
                     players: settings_clone.players.clone(),
-                    current_turn_index: 0,
+                    current_turn_index: starting_index,
                     turn_number: 0,
                     settings: SettingsState {
                         turn_timeout_seconds: settings_clone.turn_timeout_seconds,
                         players: Vec::new(), // Empty players list in preserved settings
                     },
                     player_events: init_player_events(&settings_clone.players),
+                    current_trigram: initial_trigram,
+                    failed_players: Vec::new(),
+                    used_words: Vec::new(),
                 };
 
-                // Emit MyTurn event to the first player
-                if let Some(player_events) = playing_state
-                    .player_events
-                    .iter_mut()
-                    .find(|pe| pe.player_identity == playing_state.players[0].player_identity)
-                {
+                // Emit MyTurn event to the randomly chosen first player
+                if let Some(player_events) = playing_state.player_events.iter_mut().find(|pe| {
+                    pe.player_identity
+                        == playing_state.players[starting_index as usize].player_identity
+                }) {
                     player_events.events.push(GameStateEvent::MyTurn);
                 }
 
@@ -551,11 +682,6 @@ pub fn restart_game(ctx: &ReducerContext) -> Result<(), String> {
     if let Some(mut game) = get_game(ctx) {
         match &game.state {
             GameState::Playing(playing_state) => {
-                // Only allow restart if game is over
-                if !is_game_over(playing_state) {
-                    return Err("Cannot restart game that is not over".to_string());
-                }
-
                 // Reset all players' lives and words
                 let reset_players: Vec<PlayerGameData> = playing_state
                     .players
@@ -575,7 +701,10 @@ pub fn restart_game(ctx: &ReducerContext) -> Result<(), String> {
                 update_game(ctx, game);
                 Ok(())
             }
-            GameState::Settings(_) => Err("Game is already in settings state".to_string()),
+            GameState::Settings(_) => {
+                // Already in settings state, nothing to do
+                Ok(())
+            }
         }
     } else {
         Err("Game not initialized".to_string())

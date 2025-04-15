@@ -40,6 +40,9 @@ export type PlayingState = {
   turnNumber: number,
   settings: __SettingsState,
   playerEvents: __PlayerEvents[],
+  currentTrigram: string,
+  failedPlayers: Identity[],
+  usedWords: string[],
 };
 
 /**
@@ -57,6 +60,9 @@ export namespace PlayingState {
       new ProductTypeElement("turnNumber", AlgebraicType.createU32Type()),
       new ProductTypeElement("settings", __SettingsState.getTypeScriptAlgebraicType()),
       new ProductTypeElement("playerEvents", AlgebraicType.createArrayType(__PlayerEvents.getTypeScriptAlgebraicType())),
+      new ProductTypeElement("currentTrigram", AlgebraicType.createStringType()),
+      new ProductTypeElement("failedPlayers", AlgebraicType.createArrayType(AlgebraicType.createIdentityType())),
+      new ProductTypeElement("usedWords", AlgebraicType.createArrayType(AlgebraicType.createStringType())),
     ]);
   }
 

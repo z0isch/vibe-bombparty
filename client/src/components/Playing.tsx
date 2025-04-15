@@ -25,8 +25,7 @@ export function Playing({
     }
   };
 
-  const handleRestart = async () => {
-    if (!conn) return;
+  const handleRestartGame = async () => {
     try {
       await conn.reducers.restartGame();
     } catch (error) {
@@ -34,7 +33,7 @@ export function Playing({
     }
   };
 
-  // Check if game is over (only one player has lives)
+  const currentPlayer = playingState.players[playingState.currentTurnIndex];
   const isGameOver =
     playingState.players.filter((p) => p.lives > 0).length <= 1;
 
@@ -52,7 +51,17 @@ export function Playing({
     : null;
 
   return (
-    <div>
+    <div className="space-y-6">
+      {!isGameOver && (
+        <div className="flex justify-end">
+          <button
+            onClick={handleRestartGame}
+            className="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded text-sm font-medium"
+          >
+            Restart Game
+          </button>
+        </div>
+      )}
       {isGameOver ? (
         <div className="text-center mb-8">
           <h2 className="text-4xl font-bold mb-4 text-yellow-400">
@@ -68,7 +77,7 @@ export function Playing({
                 Survived {playingState.turnNumber} turns!
               </div>
               <button
-                onClick={handleRestart}
+                onClick={handleRestartGame}
                 className="mt-6 bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded text-lg font-medium w-full"
               >
                 Play Again
@@ -77,8 +86,15 @@ export function Playing({
           )}
         </div>
       ) : (
-        <div className="text-xl text-gray-300 mb-4">
-          Turn #{playingState.turnNumber}
+        <div className="space-y-4">
+          <div className="text-xl text-gray-300">
+            Turn #{playingState.turnNumber}
+          </div>
+          <div className="bg-gray-800 p-4 rounded-lg">
+            <div className="text-3xl font-bold text-yellow-400">
+              {playingState.currentTrigram}
+            </div>
+          </div>
         </div>
       )}
 
@@ -153,6 +169,7 @@ export function Playing({
                       player.playerIdentity.toHexString()
                   )?.events
                 }
+                currentTrigram={playingState.currentTrigram}
               />
             );
           })}

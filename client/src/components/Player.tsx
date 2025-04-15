@@ -12,6 +12,7 @@ interface PlayerProps {
   onUpdateWord: (word: string) => void;
   conn: DbConnection;
   events: GameStateEvent[] | undefined;
+  currentTrigram: string;
 }
 
 // Heart SVG component
@@ -38,10 +39,14 @@ export function Player({
   onUpdateWord,
   conn,
   events,
+  currentTrigram,
 }: PlayerProps) {
   const [inputWord, setInputWord] = useState(player.currentWord);
   const [isShaking, setIsShaking] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Check if current word contains the trigram
+  const containsTrigram = inputWord.toUpperCase().includes(currentTrigram);
 
   // Update local state when server state changes
   useEffect(() => {
@@ -85,7 +90,7 @@ export function Player({
   return (
     <div
       className={`bg-gray-800 p-4 rounded ${
-        isTheirTurn ? "ring-2 ring-green-500" : ""
+        isTheirTurn ? "ring-2 ring-blue-400" : ""
       } ${isShaking ? "shake" : ""}`}
     >
       <div className="flex items-center justify-between mb-2">
@@ -103,7 +108,7 @@ export function Player({
           ))}
         </div>
       </div>
-      <div className="mt-2">
+      <div className="mt-2 space-y-2">
         <input
           ref={inputRef}
           type="text"
@@ -112,7 +117,9 @@ export function Player({
           onKeyDown={handleKeyDown}
           className={`w-full bg-gray-700 text-white px-3 py-2 rounded min-h-[2.5rem] focus:outline-none ${
             isTheirTurn && isCurrentPlayer
-              ? "focus:ring-2 focus:ring-blue-500"
+              ? containsTrigram && inputWord
+                ? "ring-2 ring-green-400"
+                : "focus:ring-2 focus:ring-blue-500"
               : "opacity-75 cursor-not-allowed"
           }`}
           disabled={!isTheirTurn || !isCurrentPlayer}

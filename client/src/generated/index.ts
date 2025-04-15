@@ -38,6 +38,8 @@ import { IdentityDisconnected } from "./identity_disconnected_reducer.ts";
 export { IdentityDisconnected };
 import { RegisterPlayer } from "./register_player_reducer.ts";
 export { RegisterPlayer };
+import { RemovePlayer } from "./remove_player_reducer.ts";
+export { RemovePlayer };
 import { RestartGame } from "./restart_game_reducer.ts";
 export { RestartGame };
 import { StartGame } from "./start_game_reducer.ts";
@@ -112,6 +114,10 @@ const REMOTE_MODULE = {
       reducerName: "register_player",
       argsType: RegisterPlayer.getTypeScriptAlgebraicType(),
     },
+    remove_player: {
+      reducerName: "remove_player",
+      argsType: RemovePlayer.getTypeScriptAlgebraicType(),
+    },
     restart_game: {
       reducerName: "restart_game",
       argsType: RestartGame.getTypeScriptAlgebraicType(),
@@ -166,6 +172,7 @@ export type Reducer = never
 | { name: "IdentityConnected", args: IdentityConnected }
 | { name: "IdentityDisconnected", args: IdentityDisconnected }
 | { name: "RegisterPlayer", args: RegisterPlayer }
+| { name: "RemovePlayer", args: RemovePlayer }
 | { name: "RestartGame", args: RestartGame }
 | { name: "StartGame", args: StartGame }
 | { name: "SubmitWord", args: SubmitWord }
@@ -207,6 +214,22 @@ export class RemoteReducers {
 
   removeOnRegisterPlayer(callback: (ctx: ReducerEventContext, username: string) => void) {
     this.connection.offReducer("register_player", callback);
+  }
+
+  removePlayer(playerIdentity: Identity) {
+    const __args = { playerIdentity };
+    let __writer = new BinaryWriter(1024);
+    RemovePlayer.getTypeScriptAlgebraicType().serialize(__writer, __args);
+    let __argsBuffer = __writer.getBuffer();
+    this.connection.callReducer("remove_player", __argsBuffer, this.setCallReducerFlags.removePlayerFlags);
+  }
+
+  onRemovePlayer(callback: (ctx: ReducerEventContext, playerIdentity: Identity) => void) {
+    this.connection.onReducer("remove_player", callback);
+  }
+
+  removeOnRemovePlayer(callback: (ctx: ReducerEventContext, playerIdentity: Identity) => void) {
+    this.connection.offReducer("remove_player", callback);
   }
 
   restartGame() {
@@ -303,6 +326,11 @@ export class SetReducerFlags {
   registerPlayerFlags: CallReducerFlags = 'FullUpdate';
   registerPlayer(flags: CallReducerFlags) {
     this.registerPlayerFlags = flags;
+  }
+
+  removePlayerFlags: CallReducerFlags = 'FullUpdate';
+  removePlayer(flags: CallReducerFlags) {
+    this.removePlayerFlags = flags;
   }
 
   restartGameFlags: CallReducerFlags = 'FullUpdate';

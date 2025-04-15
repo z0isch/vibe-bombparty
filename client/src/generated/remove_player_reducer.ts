@@ -30,34 +30,32 @@ import {
   Timestamp,
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
-export type InvalidGuessEvent = {
-  word: string,
-  reason: string,
+
+export type RemovePlayer = {
+  playerIdentity: Identity,
 };
 
 /**
  * A namespace for generated helper functions.
  */
-export namespace InvalidGuessEvent {
+export namespace RemovePlayer {
   /**
   * A function which returns this type represented as an AlgebraicType.
   * This function is derived from the AlgebraicType used to generate this type.
   */
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
-      new ProductTypeElement("word", AlgebraicType.createStringType()),
-      new ProductTypeElement("reason", AlgebraicType.createStringType()),
+      new ProductTypeElement("playerIdentity", AlgebraicType.createIdentityType()),
     ]);
   }
 
-  export function serialize(writer: BinaryWriter, value: InvalidGuessEvent): void {
-    InvalidGuessEvent.getTypeScriptAlgebraicType().serialize(writer, value);
+  export function serialize(writer: BinaryWriter, value: RemovePlayer): void {
+    RemovePlayer.getTypeScriptAlgebraicType().serialize(writer, value);
   }
 
-  export function deserialize(reader: BinaryReader): InvalidGuessEvent {
-    return InvalidGuessEvent.getTypeScriptAlgebraicType().deserialize(reader);
+  export function deserialize(reader: BinaryReader): RemovePlayer {
+    return RemovePlayer.getTypeScriptAlgebraicType().deserialize(reader);
   }
 
 }
-
 

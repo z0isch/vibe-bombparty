@@ -24,7 +24,7 @@ The game uses a modular, component-based architecture with the following core sy
 ## 3. Core SpacetimeDB Concepts Used
 
 *   **Tables:** Relational data storage defined as Rust structs with `#[spacetimedb::table]`. Key tables include `player` and `logged_out_player`. Tables must be marked `public` for client access. Table names used in client SQL subscriptions are **case-sensitive** and must match the `name = "..."` attribute exactly (e.g., `name = "player"` requires `SELECT * FROM player`).
-*   **Reducers:** Atomic, transactional Rust functions (`#[spacetimedb::reducer]`) that modify table state. Triggered by client calls or internal events. Key reducers: `register_player`, `update_player_input`, and lifecycle reducers (`identity_connected`, `identity_disconnected`).
+*   **Reducers:** Atomic, transactional Rust functions (`#[spacetimedb::reducer]`) that modify table state. Triggered by client calls or internal events. Key reducers: `register_player`, `update_player_input`, and lifecycle reducers (`identity_connected`, `identity_disconnected`). If randomness is required, use the `rng` provided by the `ReducerContext`
 *   **Subscriptions:** Clients subscribe to SQL queries (e.g., `SELECT * FROM player`) using the `SubscriptionBuilder` to receive initial data and real-time updates for specific tables.
 *   **Generated Bindings:** The `spacetime generate` command creates TypeScript code (`client/src/generated/`) based on the Rust module's schema, providing type-safe access to tables, reducers, and types on the client.
 *   **Identity:** Represents a unique, authenticated user (`ctx.sender` in reducers, `conn.identity` on client). Used as the primary key for player-related tables.

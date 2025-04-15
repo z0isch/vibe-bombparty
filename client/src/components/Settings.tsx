@@ -81,7 +81,19 @@ export function Settings({
                     playerInfo.isOnline ? "bg-green-500" : "bg-red-500"
                   }`}
                 />
-                <span>{playerInfo.username}</span>
+                <span className="flex-grow">{playerInfo.username}</span>
+                <button
+                  onClick={async () => {
+                    try {
+                      await conn.reducers.removePlayer(player.playerIdentity);
+                    } catch (error) {
+                      // Silently handle errors
+                    }
+                  }}
+                  className="bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-sm"
+                >
+                  Remove
+                </button>
               </div>
             );
           })}
