@@ -136,7 +136,7 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
     const connect = async () => {
       try {
         const connection = await moduleBindings.DbConnection.builder()
-          .withUri("ws://localhost:3000")
+          .withUri(import.meta.env.VITE_SPACETIME_WS_URI)
           .withToken(localStorage.getItem("token") || undefined)
           .withModuleName("vibe-bombparty")
           .onConnect(
