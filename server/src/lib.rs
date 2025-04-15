@@ -31,17 +31,34 @@ pub enum GameState {
 }
 
 #[derive(Clone, SpacetimeType)]
+pub struct PlayerEvents {
+    pub player_identity: Identity,
+    pub events: Vec<GameStateEvent>,
+}
+
+#[derive(Clone, SpacetimeType)]
 pub struct PlayingState {
     pub players: Vec<PlayerGameData>,
     pub current_turn_index: u32, // Index of the current player's turn
     pub turn_number: u32,        // Total number of turns that have occurred
     pub settings: SettingsState, // Settings preserved from settings state
+    pub player_events: Vec<PlayerEvents>, // Events per player
 }
 
 #[derive(Clone, SpacetimeType)]
 pub struct SettingsState {
     pub turn_timeout_seconds: u32,
     pub players: Vec<PlayerGameData>,
+}
+
+#[derive(Clone, SpacetimeType)]
+pub struct InvalidGuessEvent {
+    pub word: String,
+}
+
+#[derive(Clone, SpacetimeType)]
+pub enum GameStateEvent {
+    InvalidGuess(InvalidGuessEvent),
 }
 
 #[spacetimedb::table(name = game, public)]
@@ -75,10 +92,15 @@ struct SubmitWordMove {
     word: String,
 }
 
-#[derive(SpacetimeType)]
-enum Move {
-    TimeUp(TimeUpMove),
-    SubmitWord(SubmitWordMove),
+#[derive(Clone, SpacetimeType)]
+pub struct GuessWordMove {
+    pub word: String,
+}
+
+#[derive(Clone, SpacetimeType)]
+pub enum Move {
+    TimeUp,
+    GuessWord(GuessWordMove),
 }
 
 #[derive(Deserialize)]
@@ -96,27 +118,104 @@ lazy_static::lazy_static! {
     };
 }
 
-#[spacetimedb::reducer]
-fn turn_timeout(ctx: &ReducerContext, arg: TurnTimeoutSchedule) -> Result<(), String> {
-    if let Some(mut game) = get_game(ctx) {
-        match &game.state {
-            GameState::Settings(_) => {
-                Err("Cannot process turn timeout in settings state".to_string())
+// Helper function to schedule a turn timeout
+fn schedule_turn_timeout(ctx: &ReducerContext, state: &PlayingState) {
+    let timeout_micros = (state.settings.turn_timeout_seconds as i64) * 1_000_000;
+    let timeout = TurnTimeoutSchedule {
+        scheduled_id: 0, // Auto-incremented
+        scheduled_at: (ctx.timestamp + TimeDuration::from_micros(timeout_micros)).into(),
+        turn_number: state.turn_number,
+    };
+    ctx.db.turn_timeout_schedule().insert(timeout);
+}
+
+// Helper function to handle end of turn logic
+fn end_turn(state: &mut PlayingState, ctx: &ReducerContext) {
+    // Clear current word and advance to next player
+    let current_player = &mut state.players[state.current_turn_index as usize];
+    current_player.current_word = String::new();
+
+    // Advance to next player
+    state.current_turn_index = (state.current_turn_index + 1) % state.players.len() as u32;
+    state.turn_number += 1;
+
+    // Schedule timeout for the next player's turn
+    schedule_turn_timeout(ctx, state);
+}
+
+// Helper function to initialize empty events for all players
+fn init_player_events(players: &[PlayerGameData]) -> Vec<PlayerEvents> {
+    players
+        .iter()
+        .map(|player| PlayerEvents {
+            player_identity: player.player_identity,
+            events: Vec::new(),
+        })
+        .collect()
+}
+
+fn make_move(
+    game: &mut Game,
+    game_move: Move,
+    player_identity: Identity,
+    ctx: &ReducerContext,
+) -> Result<(), String> {
+    match &mut game.state {
+        GameState::Settings(_) => {
+            return Err("Cannot make moves while in settings state".to_string());
+        }
+        GameState::Playing(state) => {
+            if state.players.is_empty() {
+                return Err("No players in game".to_string());
             }
-            GameState::Playing(playing_state) => {
-                // Only advance the turn if the timeout matches the current turn number
-                // This prevents stale timeouts from affecting newer turns
-                if playing_state.turn_number == arg.turn_number {
-                    // Advance to next turn (which will schedule the next timeout)
-                    advance_turn(ctx, &mut game, Move::TimeUp(TimeUpMove {}))?;
-                    update_game(ctx, game);
+
+            // Clear all events at the start of each move
+            state.player_events = init_player_events(&state.players);
+
+            match game_move {
+                Move::TimeUp => {
+                    end_turn(state, ctx);
                 }
-                Ok(())
+                Move::GuessWord(guess) => {
+                    // Verify it's the player's turn
+                    let current_player = &state.players[state.current_turn_index as usize];
+                    if current_player.player_identity != player_identity {
+                        return Err("Not your turn".to_string());
+                    }
+
+                    // Convert word to uppercase for checking
+                    let word = guess.word.trim().to_uppercase();
+
+                    // Check if word is valid
+                    if !VALID_WORDS.contains(&word) {
+                        if let Some(player_events) = state
+                            .player_events
+                            .iter_mut()
+                            .find(|pe| pe.player_identity == player_identity)
+                        {
+                            player_events
+                                .events
+                                .push(GameStateEvent::InvalidGuess(InvalidGuessEvent { word }));
+                        }
+                        // Clear the current word on invalid guess
+                        let current_player = &mut state.players[state.current_turn_index as usize];
+                        current_player.current_word = String::new();
+                        // Don't advance turn, let them try again
+                    } else {
+                        // Word is valid - award points based on word length
+                        let current_player = &mut state.players[state.current_turn_index as usize];
+                        current_player.score += word.len() as i32;
+
+                        // End turn on successful word
+                        end_turn(state, ctx);
+                    }
+                }
             }
         }
-    } else {
-        Err("Game not initialized".to_string())
     }
+
+    update_game(ctx, game.clone());
+    Ok(())
 }
 
 // Helper function to get the game
@@ -128,59 +227,6 @@ fn get_game(ctx: &ReducerContext) -> Option<Game> {
 fn update_game(ctx: &ReducerContext, mut game: Game) {
     game.updated_at = ctx.timestamp;
     ctx.db.game().id().update(game);
-}
-
-// Helper function to advance to the next turn
-fn advance_turn(ctx: &ReducerContext, game: &mut Game, move_type: Move) -> Result<(), String> {
-    match &mut game.state {
-        GameState::Settings(_) => Err("Cannot advance turn in settings state".to_string()),
-        GameState::Playing(playing_state) => {
-            if playing_state.players.is_empty() {
-                playing_state.current_turn_index = 0;
-                return Ok(());
-            }
-
-            // Clear the current player's word
-            if let Some(current_player) = playing_state
-                .players
-                .get_mut(playing_state.current_turn_index as usize)
-            {
-                current_player.current_word = String::new();
-            }
-
-            match move_type {
-                Move::TimeUp(_) => {
-                    // For time up moves, we don't modify the current player's score
-                    // Just advance to the next player
-                }
-                Move::SubmitWord(submit_move) => {
-                    // For submit word moves, add points based on word length
-                    if let Some(current_player) = playing_state
-                        .players
-                        .get_mut(playing_state.current_turn_index as usize)
-                    {
-                        // Award points based on word length
-                        current_player.score += submit_move.word.len() as i32;
-                    }
-                }
-            }
-
-            // Common logic for all move types - advance to next player
-            playing_state.current_turn_index =
-                (playing_state.current_turn_index + 1) % playing_state.players.len() as u32;
-            playing_state.turn_number += 1;
-
-            // Schedule the next turn timeout using the settings
-            let timeout_micros = (playing_state.settings.turn_timeout_seconds as i64) * 1_000_000;
-            let timeout = TurnTimeoutSchedule {
-                scheduled_id: 0, // Auto-incremented
-                scheduled_at: (ctx.timestamp + TimeDuration::from_micros(timeout_micros)).into(),
-                turn_number: playing_state.turn_number,
-            };
-            ctx.db.turn_timeout_schedule().insert(timeout);
-            Ok(())
-        }
-    }
 }
 
 // Initialize the game when the module is first published
@@ -254,20 +300,7 @@ pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), Str
                 update_game(ctx, game);
                 Ok(())
             }
-            GameState::Playing(playing_state) => {
-                // Check if player already exists
-                if playing_state
-                    .players
-                    .iter()
-                    .any(|p| p.player_identity == ctx.sender)
-                {
-                    return Err("Player already registered".to_string());
-                }
-
-                playing_state.players.push(player);
-                update_game(ctx, game);
-                Ok(())
-            }
+            GameState::Playing(_) => Err("Cannot register while game is in progress".to_string()),
         }
     } else {
         Err("Game not initialized".to_string())
@@ -287,26 +320,21 @@ pub fn start_game(ctx: &ReducerContext) -> Result<(), String> {
                 let settings_clone = settings.clone();
 
                 // Transition to playing state
-                game.state = GameState::Playing(PlayingState {
-                    players: settings_clone.players,
+                let playing_state = PlayingState {
+                    players: settings_clone.players.clone(),
                     current_turn_index: 0,
                     turn_number: 0,
                     settings: SettingsState {
                         turn_timeout_seconds: settings_clone.turn_timeout_seconds,
                         players: Vec::new(), // Empty players list in preserved settings
                     },
-                });
+                    player_events: init_player_events(&settings_clone.players),
+                };
 
                 // Schedule the first turn timeout
-                let timeout_micros = (settings_clone.turn_timeout_seconds as i64) * 1_000_000;
-                let timeout = TurnTimeoutSchedule {
-                    scheduled_id: 0, // Auto-incremented
-                    scheduled_at: (ctx.timestamp + TimeDuration::from_micros(timeout_micros))
-                        .into(),
-                    turn_number: 0,
-                };
-                ctx.db.turn_timeout_schedule().insert(timeout);
+                schedule_turn_timeout(ctx, &playing_state);
 
+                game.state = GameState::Playing(playing_state);
                 update_game(ctx, game);
                 Ok(())
             }
@@ -373,28 +401,39 @@ pub fn submit_word(ctx: &ReducerContext, word: String) -> Result<(), String> {
         match &mut game.state {
             GameState::Settings(_) => Err("Game not in playing state".to_string()),
             GameState::Playing(playing_state) => {
-                // Verify it's the sender's turn
-                if playing_state.players.is_empty() {
-                    return Err("No players in game".to_string());
-                }
-
+                // Verify it's the player's turn
                 let current_player =
                     &playing_state.players[playing_state.current_turn_index as usize];
                 if current_player.player_identity != ctx.sender {
                     return Err("Not your turn".to_string());
                 }
 
-                // Convert word to uppercase for checking
-                let word = word.trim().to_uppercase();
+                make_move(
+                    &mut game,
+                    Move::GuessWord(GuessWordMove { word }),
+                    ctx.sender,
+                    ctx,
+                )
+            }
+        }
+    } else {
+        Err("Game not initialized".to_string())
+    }
+}
 
-                // Check if word is valid
-                if !VALID_WORDS.contains(&word) {
-                    return Err("Invalid word".to_string());
+#[spacetimedb::reducer]
+fn turn_timeout(ctx: &ReducerContext, arg: TurnTimeoutSchedule) -> Result<(), String> {
+    if let Some(mut game) = get_game(ctx) {
+        match &mut game.state {
+            GameState::Settings(_) => {
+                Err("Cannot process turn timeout in settings state".to_string())
+            }
+            GameState::Playing(playing_state) => {
+                // Only advance the turn if the timeout matches the current turn number
+                // This prevents stale timeouts from affecting newer turns
+                if playing_state.turn_number == arg.turn_number {
+                    make_move(&mut game, Move::TimeUp, ctx.sender, ctx)?;
                 }
-
-                // Word is valid - advance turn with score increment
-                advance_turn(ctx, &mut game, Move::SubmitWord(SubmitWordMove { word }))?;
-                update_game(ctx, game);
                 Ok(())
             }
         }

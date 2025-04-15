@@ -32,12 +32,14 @@ import {
 } from "@clockworklabs/spacetimedb-sdk";
 import { SettingsState as __SettingsState } from "./settings_state_type";
 import { PlayerGameData as __PlayerGameData } from "./player_game_data_type";
+import { PlayerEvents as __PlayerEvents } from "./player_events_type";
 
 export type PlayingState = {
   players: __PlayerGameData[],
   currentTurnIndex: number,
   turnNumber: number,
   settings: __SettingsState,
+  playerEvents: __PlayerEvents[],
 };
 
 /**
@@ -54,6 +56,7 @@ export namespace PlayingState {
       new ProductTypeElement("currentTurnIndex", AlgebraicType.createU32Type()),
       new ProductTypeElement("turnNumber", AlgebraicType.createU32Type()),
       new ProductTypeElement("settings", __SettingsState.getTypeScriptAlgebraicType()),
+      new ProductTypeElement("playerEvents", AlgebraicType.createArrayType(__PlayerEvents.getTypeScriptAlgebraicType())),
     ]);
   }
 

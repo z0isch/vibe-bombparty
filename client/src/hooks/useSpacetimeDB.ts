@@ -60,21 +60,44 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
 
     // Register callbacks
     conn.db.game.onInsert((ctx, gameData) => {
-      console.log("Game updated:", {
+      console.log("Game created:", {
+        state: gameData.state.tag,
         playerCount: gameData.state.value.players.length,
+        ...(gameData.state.tag === "Playing" && {
+          currentTurnIndex: gameData.state.value.currentTurnIndex,
+          turnNumber: gameData.state.value.turnNumber,
+          events: gameData.state.value.playerEvents,
+        }),
       });
       setGame(gameData);
     });
 
     conn.db.game.onUpdate((ctx, oldGameData, newGameData) => {
       console.log("Game updated:", {
+        state: newGameData.state.tag,
         playerCount: newGameData.state.value.players.length,
+        ...(newGameData.state.tag === "Playing" && {
+          currentTurnIndex: newGameData.state.value.currentTurnIndex,
+          turnNumber: newGameData.state.value.turnNumber,
+          events: newGameData.state.value.playerEvents,
+          currentPlayer:
+            newGameData.state.value.players[
+              newGameData.state.value.currentTurnIndex
+            ],
+          scores: newGameData.state.value.players.map((p) => ({
+            player: playerInfos.find(
+              (info) =>
+                info.identity.toHexString() === p.playerIdentity.toHexString()
+            )?.username,
+            score: p.score,
+          })),
+        }),
       });
       setGame(newGameData);
     });
 
     conn.db.game.onDelete((ctx, gameData) => {
-      console.log("Game deleted");
+      console.log("Game deleted:", gameData);
       setGame(null);
     });
 
