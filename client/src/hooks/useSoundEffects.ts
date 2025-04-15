@@ -10,9 +10,7 @@ export function useSoundEffects() {
     for (const event of events.events) {
       switch (event.tag) {
         case "InvalidGuess":
-          const audio = new Audio(
-            "static/sounds/Errors and Cancel/Cancel 1.m4a"
-          );
+          const audio = new Audio("sounds/Errors and Cancel/Cancel 1.m4a");
           audio.play().catch((error) => {
             console.error("Failed to play sound:", error);
           });
