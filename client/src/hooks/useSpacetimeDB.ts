@@ -4,6 +4,7 @@ import { Game } from "../generated/game_type";
 import { PlayerGameData } from "../generated/player_game_data_type";
 import { PlayerInfoTable } from "../generated/player_info_table_type";
 import { Identity } from "@clockworklabs/spacetimedb-sdk";
+import { useSoundEffects } from "./useSoundEffects";
 
 export interface SpacetimeDBState {
   game: Game | null;
@@ -28,6 +29,7 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
   );
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const playSound = useSoundEffects();
 
   // Helper function to get current player from game
   const getCurrentPlayer = () => {
@@ -37,6 +39,15 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
         (p) => p.playerIdentity.toHexString() === connectionIdentity
       ) || null
     );
+  };
+
+  // Helper function to check for player events and play sounds
+  const playSounds = (newGameData: Game) => {
+    if (newGameData.state.tag !== "Playing") return;
+
+    newGameData.state.value.playerEvents.forEach((playerEvent) => {
+      playSound(playerEvent);
+    });
   };
 
   // Set up subscription and callbacks
@@ -70,6 +81,7 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
         }),
       });
       setGame(gameData);
+      playSounds(gameData);
     });
 
     conn.db.game.onUpdate((ctx, oldGameData, newGameData) => {
@@ -94,6 +106,7 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
         }),
       });
       setGame(newGameData);
+      playSounds(newGameData);
     });
 
     conn.db.game.onDelete((ctx, gameData) => {
@@ -123,7 +136,7 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
         )
       );
     });
-  }, [conn, isConnected, isSubscribed]);
+  }, [conn, isConnected, isSubscribed, connectionIdentity]);
 
   // Set up connection
   useEffect(() => {
