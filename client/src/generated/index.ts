@@ -62,6 +62,8 @@ import { TurnTimeoutScheduleTableHandle } from "./turn_timeout_schedule_table.ts
 export { TurnTimeoutScheduleTableHandle };
 
 // Import and reexport all types
+import { FreeLetterAwardEvent } from "./free_letter_award_event_type.ts";
+export { FreeLetterAwardEvent };
 import { Game } from "./game_type.ts";
 export { Game };
 import { GameState } from "./game_state_type.ts";

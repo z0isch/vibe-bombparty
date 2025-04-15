@@ -31,6 +31,7 @@ import {
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
 import { InvalidGuessEvent as __InvalidGuessEvent } from "./invalid_guess_event_type";
+import { FreeLetterAwardEvent as __FreeLetterAwardEvent } from "./free_letter_award_event_type";
 
 // A namespace for generated variants and helper functions.
 export namespace GameStateEvent {
@@ -43,6 +44,8 @@ export namespace GameStateEvent {
   export type IWin = { tag: "IWin" };
   export type ILose = { tag: "ILose" };
   export type CorrectGuess = { tag: "CorrectGuess" };
+  export type LifeEarned = { tag: "LifeEarned" };
+  export type FreeLetterAward = { tag: "FreeLetterAward", value: __FreeLetterAwardEvent };
 
   // Helper functions for constructing each variant of the tagged union.
   // ```
@@ -56,6 +59,8 @@ export namespace GameStateEvent {
   export const IWin = { tag: "IWin" };
   export const ILose = { tag: "ILose" };
   export const CorrectGuess = { tag: "CorrectGuess" };
+  export const LifeEarned = { tag: "LifeEarned" };
+  export const FreeLetterAward = (value: __FreeLetterAwardEvent): GameStateEvent => ({ tag: "FreeLetterAward", value });
 
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createSumType([
@@ -65,6 +70,8 @@ export namespace GameStateEvent {
       new SumTypeVariant("IWin", AlgebraicType.createProductType([])),
       new SumTypeVariant("ILose", AlgebraicType.createProductType([])),
       new SumTypeVariant("CorrectGuess", AlgebraicType.createProductType([])),
+      new SumTypeVariant("LifeEarned", AlgebraicType.createProductType([])),
+      new SumTypeVariant("FreeLetterAward", __FreeLetterAwardEvent.getTypeScriptAlgebraicType()),
     ]);
   }
 
@@ -79,7 +86,7 @@ export namespace GameStateEvent {
 }
 
 // The tagged union or sum type for the algebraic type `GameStateEvent`.
-export type GameStateEvent = GameStateEvent.InvalidGuess | GameStateEvent.TimeUp | GameStateEvent.MyTurn | GameStateEvent.IWin | GameStateEvent.ILose | GameStateEvent.CorrectGuess;
+export type GameStateEvent = GameStateEvent.InvalidGuess | GameStateEvent.TimeUp | GameStateEvent.MyTurn | GameStateEvent.IWin | GameStateEvent.ILose | GameStateEvent.CorrectGuess | GameStateEvent.LifeEarned | GameStateEvent.FreeLetterAward;
 
 export default GameStateEvent;
 

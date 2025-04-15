@@ -82,6 +82,12 @@ export function useSoundEffects() {
               playGameSound("sounds/Complete and Success/Success 2.m4a");
             }
             break;
+          case "LifeEarned":
+            playGameSound("sounds/Complete and Success/Success 5.m4a");
+            break;
+          case "FreeLetterAward":
+            playGameSound("sounds/Complete and Success/Success 3.m4a");
+            break;
           default:
             assertNever(eventType);
         }

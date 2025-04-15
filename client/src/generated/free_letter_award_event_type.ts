@@ -30,38 +30,30 @@ import {
   Timestamp,
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
-export type PlayerGameData = {
-  playerIdentity: Identity,
-  currentWord: string,
-  lives: number,
-  usedLetters: string[],
-  freeLetters: string[],
+export type FreeLetterAwardEvent = {
+  letter: string,
 };
 
 /**
  * A namespace for generated helper functions.
  */
-export namespace PlayerGameData {
+export namespace FreeLetterAwardEvent {
   /**
   * A function which returns this type represented as an AlgebraicType.
   * This function is derived from the AlgebraicType used to generate this type.
   */
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
-      new ProductTypeElement("playerIdentity", AlgebraicType.createIdentityType()),
-      new ProductTypeElement("currentWord", AlgebraicType.createStringType()),
-      new ProductTypeElement("lives", AlgebraicType.createI32Type()),
-      new ProductTypeElement("usedLetters", AlgebraicType.createArrayType(AlgebraicType.createStringType())),
-      new ProductTypeElement("freeLetters", AlgebraicType.createArrayType(AlgebraicType.createStringType())),
+      new ProductTypeElement("letter", AlgebraicType.createStringType()),
     ]);
   }
 
-  export function serialize(writer: BinaryWriter, value: PlayerGameData): void {
-    PlayerGameData.getTypeScriptAlgebraicType().serialize(writer, value);
+  export function serialize(writer: BinaryWriter, value: FreeLetterAwardEvent): void {
+    FreeLetterAwardEvent.getTypeScriptAlgebraicType().serialize(writer, value);
   }
 
-  export function deserialize(reader: BinaryReader): PlayerGameData {
-    return PlayerGameData.getTypeScriptAlgebraicType().deserialize(reader);
+  export function deserialize(reader: BinaryReader): FreeLetterAwardEvent {
+    return FreeLetterAwardEvent.getTypeScriptAlgebraicType().deserialize(reader);
   }
 
 }

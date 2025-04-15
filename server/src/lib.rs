@@ -25,6 +25,8 @@ pub struct PlayerGameData {
     pub player_identity: Identity, // Reference to PlayerInfo
     pub current_word: String,
     pub lives: i32,
+    pub used_letters: Vec<String>, // Track letters used by this player
+    pub free_letters: Vec<String>, // Track letters that were awarded for free
 }
 
 #[spacetimedb::table(name = player_info, public)]
@@ -73,6 +75,11 @@ pub struct InvalidGuessEvent {
 }
 
 #[derive(Clone, SpacetimeType)]
+pub struct FreeLetterAwardEvent {
+    pub letter: String,
+}
+
+#[derive(Clone, SpacetimeType)]
 pub enum GameStateEvent {
     InvalidGuess(InvalidGuessEvent),
     TimeUp,
@@ -80,6 +87,8 @@ pub enum GameStateEvent {
     IWin,
     ILose,
     CorrectGuess,
+    LifeEarned,
+    FreeLetterAward(FreeLetterAwardEvent),
 }
 
 #[spacetimedb::table(name = game, public)]
@@ -333,7 +342,74 @@ fn make_move(
                             }
 
                             // Add word to used words list
-                            state.used_words.push(word);
+                            state.used_words.push(word.clone());
+
+                            // Update player's used letters
+                            let current_player =
+                                &mut state.players[state.current_turn_index as usize];
+                            for c in word.chars() {
+                                let letter = c.to_string().to_uppercase();
+                                if !current_player.used_letters.contains(&letter) {
+                                    current_player.used_letters.push(letter);
+                                }
+                            }
+
+                            // Award a random free letter if word is longer than 10 letters
+                            if word.len() > 10 {
+                                // Get all unused letters (not in used_letters or free_letters)
+                                let unused_letters: Vec<String> = ('A'..='Z')
+                                    .map(|c| c.to_string())
+                                    .filter(|letter| {
+                                        !current_player.used_letters.contains(letter)
+                                            && !current_player.free_letters.contains(letter)
+                                    })
+                                    .collect();
+
+                                // Only award a letter if there are unused ones available
+                                if !unused_letters.is_empty() {
+                                    // Pick a random unused letter
+                                    let random_index =
+                                        ctx.rng().next_u32() as usize % unused_letters.len();
+                                    let letter = unused_letters[random_index].clone();
+
+                                    // Add to free letters
+                                    current_player.free_letters.push(letter.clone());
+
+                                    // Emit FreeLetterAward event
+                                    if let Some(player_events) = state
+                                        .player_events
+                                        .iter_mut()
+                                        .find(|pe| pe.player_identity == player_identity)
+                                    {
+                                        player_events.events.push(GameStateEvent::FreeLetterAward(
+                                            FreeLetterAwardEvent { letter },
+                                        ));
+                                    }
+                                }
+                            }
+
+                            // Check if player has used all letters (a-z)
+                            let has_all_letters = ('A'..='Z').all(|c| {
+                                let letter = c.to_string();
+                                current_player.used_letters.contains(&letter)
+                                    || current_player.free_letters.contains(&letter)
+                            });
+
+                            if has_all_letters {
+                                // Award an extra life
+                                current_player.lives += 1;
+                                // Reset used letters and free letters
+                                current_player.used_letters.clear();
+                                current_player.free_letters.clear();
+                                // Emit LifeEarned event
+                                if let Some(player_events) = state
+                                    .player_events
+                                    .iter_mut()
+                                    .find(|pe| pe.player_identity == player_identity)
+                                {
+                                    player_events.events.push(GameStateEvent::LifeEarned);
+                                }
+                            }
 
                             // Pick a new trigram on successful word
                             state.current_trigram = pick_random_trigram(ctx);
@@ -451,7 +527,9 @@ pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), Str
     let player = PlayerGameData {
         player_identity: ctx.sender,
         current_word: String::new(),
-        lives: 3, // Start with 3 lives
+        lives: 3,                 // Start with 3 lives
+        used_letters: Vec::new(), // Initialize empty used letters
+        free_letters: Vec::new(), // Initialize empty free letters
     };
 
     // Check if player info already exists
@@ -689,7 +767,9 @@ pub fn restart_game(ctx: &ReducerContext) -> Result<(), String> {
                     .map(|p| PlayerGameData {
                         player_identity: p.player_identity,
                         current_word: String::new(),
-                        lives: 3, // Reset to initial lives
+                        lives: 3,                 // Reset to initial lives
+                        used_letters: Vec::new(), // Reset used letters
+                        free_letters: Vec::new(), // Reset free letters
                     })
                     .collect();
 
