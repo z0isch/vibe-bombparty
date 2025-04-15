@@ -47,18 +47,18 @@ export function Playing({
             // Find indices in original array
             const indexA = playingState.players.findIndex(
               (p) =>
-                p.player_identity.toHexString() ===
-                a.player_identity.toHexString()
+                p.playerIdentity.toHexString() ===
+                a.playerIdentity.toHexString()
             );
             const indexB = playingState.players.findIndex(
               (p) =>
-                p.player_identity.toHexString() ===
-                b.player_identity.toHexString()
+                p.playerIdentity.toHexString() ===
+                b.playerIdentity.toHexString()
             );
 
             // Find current player's index
             const currentPlayerIndex = playingState.players.findIndex(
-              (p) => p.player_identity.toHexString() === connectionIdentity
+              (p) => p.playerIdentity.toHexString() === connectionIdentity
             );
 
             // Calculate positions relative to current player (not current turn)
@@ -77,19 +77,19 @@ export function Playing({
             const playerInfo = playerInfos.find(
               (info) =>
                 info.identity.toHexString() ===
-                player.player_identity.toHexString()
+                player.playerIdentity.toHexString()
             );
             if (!playerInfo) return null;
 
             // Check if this is the current player (you)
             const isCurrentPlayer =
-              player.player_identity.toHexString() === connectionIdentity;
+              player.playerIdentity.toHexString() === connectionIdentity;
 
             // Check if it's this player's turn by finding their index in the original array
             const playerIndex = playingState.players.findIndex(
               (p) =>
-                p.player_identity.toHexString() ===
-                player.player_identity.toHexString()
+                p.playerIdentity.toHexString() ===
+                player.playerIdentity.toHexString()
             );
             const isTheirTurn =
               playerIndex ===
@@ -97,7 +97,7 @@ export function Playing({
 
             return (
               <Player
-                key={player.player_identity.toHexString()}
+                key={player.playerIdentity.toHexString()}
                 player={player}
                 playerInfo={playerInfo}
                 isCurrentPlayer={isCurrentPlayer}
