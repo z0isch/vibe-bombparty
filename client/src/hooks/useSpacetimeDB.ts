@@ -96,13 +96,6 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
             newGameData.state.value.players[
               newGameData.state.value.currentTurnIndex
             ],
-          scores: newGameData.state.value.players.map((p) => ({
-            player: playerInfos.find(
-              (info) =>
-                info.identity.toHexString() === p.playerIdentity.toHexString()
-            )?.username,
-            score: p.score,
-          })),
         }),
       });
       setGame(newGameData);

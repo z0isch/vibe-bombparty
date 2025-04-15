@@ -82,7 +82,6 @@ export function Player({
           <p className="font-medium">{playerInfo.username}</p>
         </div>
       </div>
-      <p className="text-gray-300 mb-2">Score: {player.score}</p>
       <div className="mt-2">
         <input
           ref={inputRef}

@@ -11,7 +11,6 @@ mod player_logic;
 #[derive(Clone, SpacetimeType)]
 pub struct PlayerGameData {
     pub player_identity: Identity, // Reference to PlayerInfo
-    pub score: i32,
     pub current_word: String,
 }
 
@@ -202,11 +201,7 @@ fn make_move(
                         current_player.current_word = String::new();
                         // Don't advance turn, let them try again
                     } else {
-                        // Word is valid - award points based on word length
-                        let current_player = &mut state.players[state.current_turn_index as usize];
-                        current_player.score += word.len() as i32;
-
-                        // End turn on successful word
+                        // Word is valid - end turn
                         end_turn(state, ctx);
                     }
                 }
@@ -277,7 +272,6 @@ pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), Str
 
     let player = PlayerGameData {
         player_identity: ctx.sender,
-        score: 0,
         current_word: String::new(),
     };
 
