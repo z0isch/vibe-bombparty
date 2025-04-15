@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DbConnection } from "../generated";
 import { PlayerGameData } from "../generated/player_game_data_type";
 import { PlayerInfoTable } from "../generated/player_info_table_type";
@@ -21,6 +21,11 @@ export function Settings({
   isCurrentPlayer,
 }: SettingsProps) {
   const [turnTimeout, setTurnTimeout] = useState(turnTimeoutSeconds);
+
+  // Keep local state in sync with prop
+  useEffect(() => {
+    setTurnTimeout(turnTimeoutSeconds);
+  }, [turnTimeoutSeconds]);
 
   const handleStartGame = async () => {
     if (!conn) return;
@@ -62,13 +67,13 @@ export function Settings({
             const playerInfo = playerInfos.find(
               (info) =>
                 info.identity.toHexString() ===
-                player.player_identity.toHexString()
+                player.playerIdentity.toHexString()
             );
             if (!playerInfo) return null;
 
             return (
               <div
-                key={player.player_identity.toHexString()}
+                key={player.playerIdentity.toHexString()}
                 className="bg-gray-800 p-4 rounded flex items-center gap-2"
               >
                 <div
