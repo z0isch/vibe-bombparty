@@ -4,7 +4,7 @@
 all: publish-maincloud deploy-gh-pages
 
 # Publish to SpacetimeDB maincloud
-publish-maincloud: build
+publish-maincloud:
 	cd server && spacetime build && spacetime delete -s maincloud vibe-bombparty &&  spacetime publish -s maincloud vibe-bombparty
 
 # Build and deploy client to GitHub Pages
