@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { useSpacetimeDB } from "./hooks/useSpacetimeDB";
 import { Playing } from "./components/Playing";
 import { Settings } from "./components/Settings";
-import { GameState } from "./generated";
+import { Countdown } from "./components/Countdown";
+import { GameState } from "./generated/game_state_type";
 
 function App() {
   const [
@@ -36,6 +37,13 @@ function App() {
             conn={conn}
             onJoinGame={handleJoinGame}
             isCurrentPlayer={!!currentPlayer}
+          />
+        );
+      case "Countdown":
+        return (
+          <Countdown
+            countdownState={game.state.value}
+            playerInfos={playerInfos}
           />
         );
       case "Playing":

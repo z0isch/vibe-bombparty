@@ -2,6 +2,7 @@
 - example words when failed
 - win counter
 - ~countdown timer~
-- don't allow repeat trigrams
+- ~don't allow repeat trigrams~
 - try timestamped inputs and rollback
-- countdown timer for start
+- ~ countdown timer for start~
+- shuffle players on start

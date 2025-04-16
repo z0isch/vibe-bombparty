@@ -42,6 +42,7 @@ pub struct PlayerInfoTable {
 #[derive(Clone, SpacetimeType)]
 pub enum GameState {
     Settings(SettingsState),
+    Countdown(CountdownState),
     Playing(PlayingState),
 }
 
@@ -68,6 +69,12 @@ pub struct PlayingState {
 pub struct SettingsState {
     pub turn_timeout_seconds: u32,
     pub players: Vec<PlayerGameData>,
+}
+
+#[derive(Clone, SpacetimeType)]
+pub struct CountdownState {
+    pub countdown_seconds: u32,
+    pub settings: SettingsState,
 }
 
 #[derive(Clone, SpacetimeType)]
@@ -111,6 +118,15 @@ struct TurnTimeoutSchedule {
     scheduled_id: u64,
     scheduled_at: ScheduleAt,
     turn_number: u32, // Track which turn this timeout is for
+}
+
+#[spacetimedb::table(name = game_countdown_schedule, scheduled(game_countdown))]
+pub struct GameCountdownSchedule {
+    #[primary_key]
+    #[auto_inc]
+    scheduled_id: u64,
+    pub scheduled_at: ScheduleAt,
+    pub countdown_seconds: u32,
 }
 
 #[derive(SpacetimeType)]
@@ -250,6 +266,9 @@ fn make_move(
     match &mut game.state {
         GameState::Settings(_) => {
             return Err("Cannot make moves while in settings state".to_string());
+        }
+        GameState::Countdown(_) => {
+            return Err("Cannot make moves during countdown".to_string());
         }
         GameState::Playing(state) => {
             if state.players.is_empty() {
@@ -529,6 +548,9 @@ pub fn update_turn_timeout(ctx: &ReducerContext, seconds: u32) -> Result<(), Str
                 update_game(ctx, game);
                 Ok(())
             }
+            GameState::Countdown(_) => {
+                Err("Cannot update turn timeout during countdown".to_string())
+            }
             GameState::Playing(_) => {
                 Err("Cannot update turn timeout while game is in progress".to_string())
             }
@@ -583,6 +605,7 @@ pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), Str
                 update_game(ctx, game);
                 Ok(())
             }
+            GameState::Countdown(_) => Err("Cannot register during countdown".to_string()),
             GameState::Playing(_) => Err("Cannot register while game is in progress".to_string()),
         }
     } else {
@@ -608,6 +631,7 @@ pub fn remove_player(ctx: &ReducerContext, player_identity: Identity) -> Result<
                     Err("Player not found".to_string())
                 }
             }
+            GameState::Countdown(_) => Err("Cannot remove player during countdown".to_string()),
             GameState::Playing(_) => {
                 Err("Cannot remove player while game is in progress".to_string())
             }
@@ -626,48 +650,22 @@ pub fn start_game(ctx: &ReducerContext) -> Result<(), String> {
                     return Err("Cannot start game with no players".to_string());
                 }
 
-                // Clone the settings first so we don't have multiple borrows
-                let settings_clone = settings.clone();
-
-                // Generate random starting player index using the reducer context's random generator
-                let starting_index = ctx.rng().next_u32() % settings_clone.players.len() as u32;
-
-                // Create playing state
-                let mut playing_state = PlayingState {
-                    players: settings_clone.players.clone(),
-                    current_turn_index: starting_index,
-                    turn_number: 0,
-                    settings: SettingsState {
-                        turn_timeout_seconds: settings_clone.turn_timeout_seconds,
-                        players: Vec::new(), // Empty players list in preserved settings
-                    },
-                    player_events: init_player_events(&settings_clone.players),
-                    current_trigram: String::new(), // Will be set by pick_random_trigram_and_update
-                    failed_players: Vec::new(),
-                    used_words: Vec::new(),
-                    used_trigrams: Vec::new(),
+                // Start a 5 second countdown
+                let countdown_state = CountdownState {
+                    countdown_seconds: 5,
+                    settings: settings.clone(),
                 };
 
-                // Pick initial random trigram
-                pick_random_trigram_and_update(&mut playing_state, ctx)?;
+                // Schedule the countdown
+                schedule_game_start(ctx, 5);
 
-                // Emit MyTurn event to the randomly chosen first player
-                if let Some(player_events) = playing_state.player_events.iter_mut().find(|pe| {
-                    pe.player_identity
-                        == playing_state.players[starting_index as usize].player_identity
-                }) {
-                    player_events.events.push(GameStateEvent::MyTurn);
-                }
-
-                // Schedule the first turn timeout before moving playing_state
-                schedule_turn_timeout(ctx, &playing_state);
-
-                // Update game state
-                game.state = GameState::Playing(playing_state);
+                // Update game state to countdown
+                game.state = GameState::Countdown(countdown_state);
                 update_game(ctx, game);
 
                 Ok(())
             }
+            GameState::Countdown(_) => Err("Game is already in countdown".to_string()),
             GameState::Playing(_) => Err("Game already in progress".to_string()),
         }
     } else {
@@ -699,6 +697,7 @@ pub fn update_current_word(ctx: &ReducerContext, word: String) -> Result<(), Str
     if let Some(mut game) = get_game(ctx) {
         match &mut game.state {
             GameState::Settings(_) => Err("Game not in playing state".to_string()),
+            GameState::Countdown(_) => Err("Cannot update word during countdown".to_string()),
             GameState::Playing(playing_state) => {
                 // Find the player's index
                 if let Some(player_index) = playing_state
@@ -733,6 +732,7 @@ pub fn submit_word(ctx: &ReducerContext, word: String) -> Result<(), String> {
     if let Some(mut game) = get_game(ctx) {
         match &mut game.state {
             GameState::Settings(_) => Err("Game not in playing state".to_string()),
+            GameState::Countdown(_) => Err("Cannot submit word during countdown".to_string()),
             GameState::Playing(playing_state) => {
                 // Verify it's the player's turn
                 let current_player =
@@ -760,6 +760,9 @@ fn turn_timeout(ctx: &ReducerContext, arg: TurnTimeoutSchedule) -> Result<(), St
         match &mut game.state {
             GameState::Settings(_) => {
                 Err("Cannot process turn timeout in settings state".to_string())
+            }
+            GameState::Countdown(_) => {
+                Err("Cannot process turn timeout during countdown".to_string())
             }
             GameState::Playing(playing_state) => {
                 // Only advance the turn if the timeout matches the current turn number
@@ -806,6 +809,72 @@ pub fn restart_game(ctx: &ReducerContext) -> Result<(), String> {
                 // Already in settings state, nothing to do
                 Ok(())
             }
+            GameState::Countdown(_) => Err("Cannot restart game during countdown".to_string()),
+        }
+    } else {
+        Err("Game not initialized".to_string())
+    }
+}
+
+// Helper function to schedule game start countdown
+fn schedule_game_start(ctx: &ReducerContext, countdown_seconds: u32) {
+    let timeout_micros = (countdown_seconds as i64) * 1_000_000;
+    let countdown = GameCountdownSchedule {
+        scheduled_id: 0, // Auto-incremented
+        countdown_seconds,
+        scheduled_at: (ctx.timestamp + TimeDuration::from_micros(timeout_micros)).into(),
+    };
+    ctx.db.game_countdown_schedule().insert(countdown);
+}
+
+#[spacetimedb::reducer]
+pub fn game_countdown(ctx: &ReducerContext, _arg: GameCountdownSchedule) -> Result<(), String> {
+    if let Some(mut game) = get_game(ctx) {
+        match &game.state {
+            GameState::Countdown(countdown_state) => {
+                // Clone the settings first so we don't have multiple borrows
+                let settings_clone = countdown_state.settings.clone();
+
+                // Generate random starting player index using the reducer context's random generator
+                let starting_index = ctx.rng().next_u32() % settings_clone.players.len() as u32;
+
+                // Create playing state
+                let mut playing_state = PlayingState {
+                    players: settings_clone.players.clone(),
+                    current_turn_index: starting_index,
+                    turn_number: 0,
+                    settings: SettingsState {
+                        turn_timeout_seconds: settings_clone.turn_timeout_seconds,
+                        players: Vec::new(), // Empty players list in preserved settings
+                    },
+                    player_events: init_player_events(&settings_clone.players),
+                    current_trigram: String::new(), // Will be set by pick_random_trigram_and_update
+                    failed_players: Vec::new(),
+                    used_words: Vec::new(),
+                    used_trigrams: Vec::new(),
+                };
+
+                // Pick initial random trigram
+                pick_random_trigram_and_update(&mut playing_state, ctx)?;
+
+                // Emit MyTurn event to the randomly chosen first player
+                if let Some(player_events) = playing_state.player_events.iter_mut().find(|pe| {
+                    pe.player_identity
+                        == playing_state.players[starting_index as usize].player_identity
+                }) {
+                    player_events.events.push(GameStateEvent::MyTurn);
+                }
+
+                // Schedule the first turn timeout
+                schedule_turn_timeout(ctx, &playing_state);
+
+                // Update game state
+                game.state = GameState::Playing(playing_state);
+                update_game(ctx, game);
+
+                Ok(())
+            }
+            _ => Err("Game is not in countdown state".to_string()),
         }
     } else {
         Err("Game not initialized".to_string())

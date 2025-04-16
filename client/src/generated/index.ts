@@ -32,6 +32,8 @@ import {
 } from "@clockworklabs/spacetimedb-sdk";
 
 // Import and reexport all reducer arg types
+import { GameCountdown } from "./game_countdown_reducer.ts";
+export { GameCountdown };
 import { IdentityConnected } from "./identity_connected_reducer.ts";
 export { IdentityConnected };
 import { IdentityDisconnected } from "./identity_disconnected_reducer.ts";
@@ -56,16 +58,22 @@ export { UpdateTurnTimeout };
 // Import and reexport all table handle types
 import { GameTableHandle } from "./game_table.ts";
 export { GameTableHandle };
+import { GameCountdownScheduleTableHandle } from "./game_countdown_schedule_table.ts";
+export { GameCountdownScheduleTableHandle };
 import { PlayerInfoTableHandle } from "./player_info_table.ts";
 export { PlayerInfoTableHandle };
 import { TurnTimeoutScheduleTableHandle } from "./turn_timeout_schedule_table.ts";
 export { TurnTimeoutScheduleTableHandle };
 
 // Import and reexport all types
+import { CountdownState } from "./countdown_state_type.ts";
+export { CountdownState };
 import { FreeLetterAwardEvent } from "./free_letter_award_event_type.ts";
 export { FreeLetterAwardEvent };
 import { Game } from "./game_type.ts";
 export { Game };
+import { GameCountdownSchedule } from "./game_countdown_schedule_type.ts";
+export { GameCountdownSchedule };
 import { GameState } from "./game_state_type.ts";
 export { GameState };
 import { GameStateEvent } from "./game_state_event_type.ts";
@@ -92,6 +100,11 @@ const REMOTE_MODULE = {
       rowType: Game.getTypeScriptAlgebraicType(),
       primaryKey: "id",
     },
+    game_countdown_schedule: {
+      tableName: "game_countdown_schedule",
+      rowType: GameCountdownSchedule.getTypeScriptAlgebraicType(),
+      primaryKey: "scheduledId",
+    },
     player_info: {
       tableName: "player_info",
       rowType: PlayerInfoTable.getTypeScriptAlgebraicType(),
@@ -104,6 +117,10 @@ const REMOTE_MODULE = {
     },
   },
   reducers: {
+    game_countdown: {
+      reducerName: "game_countdown",
+      argsType: GameCountdown.getTypeScriptAlgebraicType(),
+    },
     identity_connected: {
       reducerName: "identity_connected",
       argsType: IdentityConnected.getTypeScriptAlgebraicType(),
@@ -171,6 +188,7 @@ const REMOTE_MODULE = {
 
 // A type representing all the possible variants of a reducer.
 export type Reducer = never
+| { name: "GameCountdown", args: GameCountdown }
 | { name: "IdentityConnected", args: IdentityConnected }
 | { name: "IdentityDisconnected", args: IdentityDisconnected }
 | { name: "RegisterPlayer", args: RegisterPlayer }
@@ -185,6 +203,22 @@ export type Reducer = never
 
 export class RemoteReducers {
   constructor(private connection: DbConnectionImpl, private setCallReducerFlags: SetReducerFlags) {}
+
+  gameCountdown(arg: GameCountdownSchedule) {
+    const __args = { arg };
+    let __writer = new BinaryWriter(1024);
+    GameCountdown.getTypeScriptAlgebraicType().serialize(__writer, __args);
+    let __argsBuffer = __writer.getBuffer();
+    this.connection.callReducer("game_countdown", __argsBuffer, this.setCallReducerFlags.gameCountdownFlags);
+  }
+
+  onGameCountdown(callback: (ctx: ReducerEventContext, arg: GameCountdownSchedule) => void) {
+    this.connection.onReducer("game_countdown", callback);
+  }
+
+  removeOnGameCountdown(callback: (ctx: ReducerEventContext, arg: GameCountdownSchedule) => void) {
+    this.connection.offReducer("game_countdown", callback);
+  }
 
   onIdentityConnected(callback: (ctx: ReducerEventContext) => void) {
     this.connection.onReducer("identity_connected", callback);
@@ -325,6 +359,11 @@ export class RemoteReducers {
 }
 
 export class SetReducerFlags {
+  gameCountdownFlags: CallReducerFlags = 'FullUpdate';
+  gameCountdown(flags: CallReducerFlags) {
+    this.gameCountdownFlags = flags;
+  }
+
   registerPlayerFlags: CallReducerFlags = 'FullUpdate';
   registerPlayer(flags: CallReducerFlags) {
     this.registerPlayerFlags = flags;
@@ -372,6 +411,10 @@ export class RemoteTables {
 
   get game(): GameTableHandle {
     return new GameTableHandle(this.connection.clientCache.getOrCreateTable<Game>(REMOTE_MODULE.tables.game));
+  }
+
+  get gameCountdownSchedule(): GameCountdownScheduleTableHandle {
+    return new GameCountdownScheduleTableHandle(this.connection.clientCache.getOrCreateTable<GameCountdownSchedule>(REMOTE_MODULE.tables.game_countdown_schedule));
   }
 
   get playerInfo(): PlayerInfoTableHandle {
