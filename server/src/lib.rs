@@ -27,6 +27,7 @@ pub struct PlayerGameData {
     pub lives: i32,
     pub used_letters: Vec<String>, // Track letters used by this player
     pub free_letters: Vec<String>, // Track letters that were awarded for free
+    pub last_valid_guess: String,  // Track the player's last valid guess
 }
 
 #[spacetimedb::table(name = player_info, public)]
@@ -282,9 +283,10 @@ fn make_move(
                         state.failed_players.push(current_player_id);
                     }
 
-                    // Decrease lives on timeout
+                    // Decrease lives on timeout and clear last valid guess
                     let current_player = &mut state.players[state.current_turn_index as usize];
                     current_player.lives = (current_player.lives - 1).max(0);
+                    current_player.last_valid_guess = String::new(); // Clear last valid guess on timeout
 
                     // Check if all players with lives have failed with this trigram
                     let active_players: Vec<_> = state
@@ -344,9 +346,10 @@ fn make_move(
                             // Add word to used words list
                             state.used_words.push(word.clone());
 
-                            // Update player's used letters
+                            // Update player's used letters and last valid guess
                             let current_player =
                                 &mut state.players[state.current_turn_index as usize];
+                            current_player.last_valid_guess = word.clone(); // Store the last valid guess
                             for c in word.chars() {
                                 let letter = c.to_string().to_uppercase();
                                 if !current_player.used_letters.contains(&letter) {
@@ -527,9 +530,10 @@ pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), Str
     let player = PlayerGameData {
         player_identity: ctx.sender,
         current_word: String::new(),
-        lives: 3,                 // Start with 3 lives
-        used_letters: Vec::new(), // Initialize empty used letters
-        free_letters: Vec::new(), // Initialize empty free letters
+        lives: 3,                        // Start with 3 lives
+        used_letters: Vec::new(),        // Initialize empty used letters
+        free_letters: Vec::new(),        // Initialize empty free letters
+        last_valid_guess: String::new(), // Initialize empty last valid guess
     };
 
     // Check if player info already exists
@@ -767,9 +771,10 @@ pub fn restart_game(ctx: &ReducerContext) -> Result<(), String> {
                     .map(|p| PlayerGameData {
                         player_identity: p.player_identity,
                         current_word: String::new(),
-                        lives: 3,                 // Reset to initial lives
-                        used_letters: Vec::new(), // Reset used letters
-                        free_letters: Vec::new(), // Reset free letters
+                        lives: 3,                        // Reset to initial lives
+                        used_letters: Vec::new(),        // Reset used letters
+                        free_letters: Vec::new(),        // Reset free letters
+                        last_valid_guess: String::new(), // Reset last valid guess
                     })
                     .collect();
 

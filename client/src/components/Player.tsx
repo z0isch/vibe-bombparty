@@ -157,6 +157,9 @@ export function Player({
           value={isTheirTurn ? inputWord : player.currentWord}
           onChange={handleWordChange}
           onKeyDown={handleKeyDown}
+          placeholder={
+            !isTheirTurn && player.lastValidGuess ? player.lastValidGuess : ""
+          }
           className={`w-full bg-gray-700 text-white px-3 py-2 rounded min-h-[2.5rem] focus:outline-none ${
             isTheirTurn && isCurrentPlayer
               ? inputWord.length > 10 && containsTrigram

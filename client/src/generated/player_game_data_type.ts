@@ -36,6 +36,7 @@ export type PlayerGameData = {
   lives: number,
   usedLetters: string[],
   freeLetters: string[],
+  lastValidGuess: string,
 };
 
 /**
@@ -53,6 +54,7 @@ export namespace PlayerGameData {
       new ProductTypeElement("lives", AlgebraicType.createI32Type()),
       new ProductTypeElement("usedLetters", AlgebraicType.createArrayType(AlgebraicType.createStringType())),
       new ProductTypeElement("freeLetters", AlgebraicType.createArrayType(AlgebraicType.createStringType())),
+      new ProductTypeElement("lastValidGuess", AlgebraicType.createStringType()),
     ]);
   }
 
