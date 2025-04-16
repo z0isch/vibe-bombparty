@@ -239,7 +239,9 @@ fn end_turn(state: &mut PlayingState, ctx: &ReducerContext) {
         // Schedule timeout for the next player's turn
         schedule_turn_timeout(ctx, state);
     } else {
-        // Game is over, emit events
+        // Game is over, store example words for the final trigram
+        state.failed_trigram_examples = get_example_words(&state.current_trigram, ctx);
+        // Emit game over events
         emit_game_over_events(state);
     }
 }

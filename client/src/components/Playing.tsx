@@ -3,58 +3,8 @@ import { PlayerInfoTable } from "../generated/player_info_table_type";
 import { Player } from "./Player";
 import { DbConnection } from "../generated";
 import { useEffect, useRef, useState } from "react";
-
-// Circular countdown timer component
-function CircularCountdown({
-  timeLeft,
-  totalTime,
-}: {
-  timeLeft: number;
-  totalTime: number;
-}) {
-  const radius = 25;
-  const circumference = 2 * Math.PI * radius;
-  const progress = (timeLeft / totalTime) * circumference;
-  const isLowTime = timeLeft <= 3;
-
-  return (
-    <div className="relative inline-flex items-center justify-center">
-      <svg className="transform -rotate-90 w-20 h-20">
-        {/* Background circle */}
-        <circle
-          cx="40"
-          cy="40"
-          r={radius}
-          className="stroke-gray-700"
-          strokeWidth="6"
-          fill="transparent"
-        />
-        {/* Progress circle */}
-        <circle
-          cx="40"
-          cy="40"
-          r={radius}
-          className={`${
-            isLowTime ? "stroke-red-500" : "stroke-blue-500"
-          } transition-all duration-1000`}
-          strokeWidth="6"
-          strokeDasharray={circumference}
-          strokeDashoffset={circumference - progress}
-          fill="transparent"
-          strokeLinecap="round"
-        />
-      </svg>
-      {/* Centered time text */}
-      <div
-        className={`absolute font-mono text-2xl ${
-          isLowTime ? "text-red-500" : "text-gray-300"
-        }`}
-      >
-        {timeLeft}
-      </div>
-    </div>
-  );
-}
+import { CircularCountdown } from "./CircularCountdown";
+import { FailedTrigram } from "./FailedTrigram";
 
 interface PlayingProps {
   playingState: PlayingState;
@@ -163,6 +113,15 @@ export function Playing({
               <div className="mt-4 text-gray-400">
                 Survived {playingState.turnNumber} turns!
               </div>
+              {/* Show failed trigram examples at game over */}
+              {playingState.failedTrigramExamples.length > 0 && (
+                <div className="mt-4">
+                  <FailedTrigram
+                    trigram={playingState.currentTrigram}
+                    examples={playingState.failedTrigramExamples}
+                  />
+                </div>
+              )}
               <button
                 onClick={handleRestartGame}
                 className="mt-6 bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded text-lg font-medium w-full"
@@ -191,37 +150,15 @@ export function Playing({
 
           {/* Failed Trigram Examples Section */}
           {playingState.failedTrigramExamples.length > 0 && (
-            <div className="bg-blue-900/20 border border-blue-500/50 rounded-lg p-4 mb-4">
-              <span className="text-blue-400 font-medium">
-                {
+            <div className="mb-4">
+              <FailedTrigram
+                trigram={
                   playingState.usedTrigrams[
                     playingState.usedTrigrams.length - 2
                   ]
                 }
-              </span>
-              :{" "}
-              <div className="inline-flex gap-1 flex-wrap">
-                {playingState.failedTrigramExamples.map((word, index) => (
-                  <a
-                    key={index}
-                    href={`https://www.oed.com/search/dictionary/?q=${word.toLowerCase()}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-200 px-3 py-1 rounded hover:bg-blue-800/40 transition-colors cursor-pointer inline-flex items-center gap-1"
-                  >
-                    {word}
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4 opacity-75"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
-                      <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
-                    </svg>
-                  </a>
-                ))}
-              </div>
+                examples={playingState.failedTrigramExamples}
+              />
             </div>
           )}
         </div>
