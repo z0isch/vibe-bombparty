@@ -61,6 +61,7 @@ pub struct PlayingState {
     pub current_trigram: String, // Current trigram that must be contained in valid words
     pub failed_players: Vec<Identity>, // Players who have failed with the current trigram
     pub used_words: Vec<String>, // Track words that have been used
+    pub used_trigrams: Vec<String>, // Track trigrams that have been used
 }
 
 #[derive(Clone, SpacetimeType)]
@@ -302,7 +303,7 @@ fn make_move(
 
                     // If all active players have failed, pick a new trigram
                     if all_active_failed {
-                        state.current_trigram = pick_random_trigram(ctx);
+                        pick_random_trigram_and_update(state, ctx)?;
                         state.failed_players.clear();
                     }
 
@@ -415,7 +416,7 @@ fn make_move(
                             }
 
                             // Pick a new trigram on successful word
-                            state.current_trigram = pick_random_trigram(ctx);
+                            pick_random_trigram_and_update(state, ctx)?;
                             state.failed_players.clear();
 
                             end_turn(state, ctx);
@@ -465,21 +466,33 @@ fn get_game(ctx: &ReducerContext) -> Option<Game> {
     ctx.db.game().id().find(&1)
 }
 
-// Helper function to pick a random trigram
-fn pick_random_trigram(ctx: &ReducerContext) -> String {
-    // Filter trigrams to only those with frequency > 200
-    let high_frequency_trigrams: Vec<&TrigramFreq> = TRIGRAM_DATA
+// Helper function to pick a random trigram and update used trigrams
+fn pick_random_trigram_and_update(
+    state: &mut PlayingState,
+    ctx: &ReducerContext,
+) -> Result<(), String> {
+    // Filter trigrams to only those with frequency > 200 and not used yet
+    let available_trigrams: Vec<&TrigramFreq> = TRIGRAM_DATA
         .trigrams
         .iter()
-        .filter(|t| t.frequency > 200)
+        .filter(|t| t.frequency > 200 && !state.used_trigrams.contains(&t.trigram.to_uppercase()))
         .collect();
 
-    let total_trigrams = high_frequency_trigrams.len();
-    let random_index = ctx.rng().next_u32() as usize % total_trigrams;
-    high_frequency_trigrams[random_index]
+    if available_trigrams.is_empty() {
+        return Err("Critical error: Ran out of trigrams. This should never happen.".to_string());
+    }
+
+    // Pick a random trigram from available ones
+    let random_index = ctx.rng().next_u32() as usize % available_trigrams.len();
+    let new_trigram = available_trigrams[random_index]
         .trigram
         .clone()
-        .to_uppercase()
+        .to_uppercase();
+
+    // Add the new trigram to used trigrams and update current trigram
+    state.used_trigrams.push(new_trigram.clone());
+    state.current_trigram = new_trigram;
+    Ok(())
 }
 
 // Helper function to update the game
@@ -619,10 +632,7 @@ pub fn start_game(ctx: &ReducerContext) -> Result<(), String> {
                 // Generate random starting player index using the reducer context's random generator
                 let starting_index = ctx.rng().next_u32() % settings_clone.players.len() as u32;
 
-                // Pick initial random trigram
-                let initial_trigram = pick_random_trigram(ctx);
-
-                // Transition to playing state
+                // Create playing state
                 let mut playing_state = PlayingState {
                     players: settings_clone.players.clone(),
                     current_turn_index: starting_index,
@@ -632,10 +642,14 @@ pub fn start_game(ctx: &ReducerContext) -> Result<(), String> {
                         players: Vec::new(), // Empty players list in preserved settings
                     },
                     player_events: init_player_events(&settings_clone.players),
-                    current_trigram: initial_trigram,
+                    current_trigram: String::new(), // Will be set by pick_random_trigram_and_update
                     failed_players: Vec::new(),
                     used_words: Vec::new(),
+                    used_trigrams: Vec::new(),
                 };
+
+                // Pick initial random trigram
+                pick_random_trigram_and_update(&mut playing_state, ctx)?;
 
                 // Emit MyTurn event to the randomly chosen first player
                 if let Some(player_events) = playing_state.player_events.iter_mut().find(|pe| {
@@ -645,14 +659,16 @@ pub fn start_game(ctx: &ReducerContext) -> Result<(), String> {
                     player_events.events.push(GameStateEvent::MyTurn);
                 }
 
-                // Schedule the first turn timeout
+                // Schedule the first turn timeout before moving playing_state
                 schedule_turn_timeout(ctx, &playing_state);
 
+                // Update game state
                 game.state = GameState::Playing(playing_state);
                 update_game(ctx, game);
+
                 Ok(())
             }
-            GameState::Playing(_) => Err("Game already started".to_string()),
+            GameState::Playing(_) => Err("Game already in progress".to_string()),
         }
     } else {
         Err("Game not initialized".to_string())

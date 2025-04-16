@@ -43,6 +43,7 @@ export type PlayingState = {
   currentTrigram: string,
   failedPlayers: Identity[],
   usedWords: string[],
+  usedTrigrams: string[],
 };
 
 /**
@@ -63,6 +64,7 @@ export namespace PlayingState {
       new ProductTypeElement("currentTrigram", AlgebraicType.createStringType()),
       new ProductTypeElement("failedPlayers", AlgebraicType.createArrayType(AlgebraicType.createIdentityType())),
       new ProductTypeElement("usedWords", AlgebraicType.createArrayType(AlgebraicType.createStringType())),
+      new ProductTypeElement("usedTrigrams", AlgebraicType.createArrayType(AlgebraicType.createStringType())),
     ]);
   }
 
