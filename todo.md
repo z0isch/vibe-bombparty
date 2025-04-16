@@ -4,5 +4,5 @@
 - ~countdown timer~
 - ~don't allow repeat trigrams~
 - try timestamped inputs and rollback
-- ~ countdown timer for start~
-- shuffle players on start
+- ~countdown timer for start~
+- ~shuffle players on start~
