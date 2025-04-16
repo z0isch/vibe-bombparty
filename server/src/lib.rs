@@ -164,7 +164,7 @@ struct WordSet {
 }
 
 static WORD_SET_BYTES: &[u8] = include_bytes!("../assets/words.bin");
-static TRIGRAM_DATA_BYTES: &[u8] = include_bytes!("../assets/histogram.bin");
+static TRIGRAM_FREQS_BYTES: &[u8] = include_bytes!("../assets/histogram.bin");
 static TRIGRAM_MAP_BYTES: &[u8] = include_bytes!("../assets/trigram-words.bin");
 
 lazy_static::lazy_static! {
@@ -174,8 +174,8 @@ lazy_static::lazy_static! {
         word_set.words
     };
 
-    static ref TRIGRAM_DATA: Vec<TrigramFreq> = {
-        let d: TrigramData = deserialize(TRIGRAM_DATA_BYTES)
+    static ref TRIGRAM_FREQS: Vec<TrigramFreq> = {
+        let d: TrigramData = deserialize(TRIGRAM_FREQS_BYTES)
             .expect("Failed to deserialize trigram data");
         d.trigrams
     };
@@ -533,7 +533,7 @@ fn pick_random_trigram_and_update(
     ctx: &ReducerContext,
 ) -> Result<(), String> {
     // Filter trigrams to only those with frequency > 200 and not used yet
-    let available_trigrams: Vec<&TrigramFreq> = TRIGRAM_DATA
+    let available_trigrams: Vec<&TrigramFreq> = TRIGRAM_FREQS
         .iter()
         .filter(|t| t.frequency > 200 && !state.used_trigrams.contains(&t.trigram.to_uppercase()))
         .collect();
