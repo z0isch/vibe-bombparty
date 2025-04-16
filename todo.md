@@ -2,5 +2,5 @@
 - example words when failed
 - win counter
 - countdown timer
-- don't allow repeat words
+- don't allow repeat trigrams
 - try timestamped inputs and rollback
