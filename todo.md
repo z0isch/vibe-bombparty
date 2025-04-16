@@ -1,0 +1,6 @@
+- persist last guess
+- example words when failed
+- win counter
+- countdown timer
+- don't allow repeat words
+- try timestamped inputs and rollback
