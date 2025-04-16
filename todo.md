@@ -1,5 +1,5 @@
 - ~persist last guess~
-- example words when failed
+- ~example words when failed~
 - win counter
 - ~countdown timer~
 - ~don't allow repeat trigrams~
