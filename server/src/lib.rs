@@ -4,7 +4,7 @@ use spacetimedb::{
     rand::RngCore, Identity, ReducerContext, ScheduleAt, SpacetimeType, Table, TimeDuration,
     Timestamp,
 };
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 mod common;
 mod player_logic;
@@ -18,6 +18,11 @@ struct TrigramData {
 struct TrigramFreq {
     trigram: String,
     frequency: u32,
+}
+
+#[derive(Deserialize)]
+struct TrigramMap {
+    trigrams: HashMap<String, Vec<String>>,
 }
 
 #[derive(Clone, SpacetimeType)]
@@ -63,6 +68,7 @@ pub struct PlayingState {
     pub failed_players: Vec<Identity>, // Players who have failed with the current trigram
     pub used_words: Vec<String>, // Track words that have been used
     pub used_trigrams: Vec<String>, // Track trigrams that have been used
+    pub failed_trigram_examples: Vec<String>, // Example words for the last trigram that all players failed on
 }
 
 #[derive(Clone, SpacetimeType)]
@@ -158,6 +164,7 @@ struct WordSet {
 
 static WORD_SET_BYTES: &[u8] = include_bytes!("../assets/words.bin");
 static TRIGRAM_DATA_BYTES: &[u8] = include_bytes!("../assets/histogram.bin");
+static TRIGRAM_MAP_BYTES: &[u8] = include_bytes!("../assets/trigram-words.bin");
 
 lazy_static::lazy_static! {
     static ref VALID_WORDS: HashSet<String> = {
@@ -169,6 +176,11 @@ lazy_static::lazy_static! {
     static ref TRIGRAM_DATA: TrigramData = {
         deserialize(TRIGRAM_DATA_BYTES)
             .expect("Failed to deserialize trigram data")
+    };
+
+    static ref TRIGRAM_MAP: TrigramMap = {
+        deserialize(TRIGRAM_MAP_BYTES)
+            .expect("Failed to deserialize trigram map")
     };
 }
 
@@ -320,8 +332,11 @@ fn make_move(
                         .iter()
                         .all(|id| state.failed_players.contains(id));
 
-                    // If all active players have failed, pick a new trigram
+                    // If all active players have failed, get example words and pick a new trigram
                     if all_active_failed {
+                        // Store example words for the failed trigram before changing it
+                        state.failed_trigram_examples =
+                            get_example_words(&state.current_trigram, ctx);
                         pick_random_trigram_and_update(state, ctx)?;
                         state.failed_players.clear();
                     }
@@ -365,6 +380,9 @@ fn make_move(
 
                             // Add word to used words list
                             state.used_words.push(word.clone());
+
+                            // Clear failed trigram examples since we had a successful word
+                            state.failed_trigram_examples.clear();
 
                             // Update player's used letters and last valid guess
                             let current_player =
@@ -862,6 +880,7 @@ pub fn game_countdown(ctx: &ReducerContext, _arg: GameCountdownSchedule) -> Resu
                     failed_players: Vec::new(),
                     used_words: Vec::new(),
                     used_trigrams: Vec::new(),
+                    failed_trigram_examples: Vec::new(), // Initialize empty failed trigram examples
                 };
 
                 // Pick initial random trigram
@@ -889,5 +908,38 @@ pub fn game_countdown(ctx: &ReducerContext, _arg: GameCountdownSchedule) -> Resu
         }
     } else {
         Err("Game not initialized".to_string())
+    }
+}
+
+// Helper function to get random long words containing a trigram
+fn get_example_words(trigram: &str, ctx: &ReducerContext) -> Vec<String> {
+    let trigram_lower = trigram.to_lowercase();
+    if let Some(words) = TRIGRAM_MAP.trigrams.get(&trigram_lower) {
+        // Filter for words longer than 10 characters
+        let long_words: Vec<String> = words.iter().filter(|w| w.len() > 10).cloned().collect();
+
+        if long_words.is_empty() {
+            return Vec::new();
+        }
+
+        // Get up to 3 random words
+        let mut rng = ctx.rng();
+        let mut selected_words = Vec::new();
+        let mut indices: Vec<usize> = (0..long_words.len()).collect();
+
+        // Shuffle indices
+        for i in (1..indices.len()).rev() {
+            let j = rng.next_u32() as usize % (i + 1);
+            indices.swap(i, j);
+        }
+
+        // Take up to 3 words
+        for &idx in indices.iter().take(3) {
+            selected_words.push(long_words[idx].to_uppercase());
+        }
+
+        selected_words
+    } else {
+        Vec::new()
     }
 }
