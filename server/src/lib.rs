@@ -305,37 +305,6 @@ fn is_game_over(state: &PlayingState) -> bool {
     players_with_lives <= 1
 }
 
-// Helper function to update the winner's win count
-fn update_winner_stats(winner: &PlayerGameData, ctx: &ReducerContext) {
-    if let Some(mut winner_info) = ctx
-        .db
-        .player_info()
-        .identity()
-        .find(&winner.player_identity)
-    {
-        winner_info.wins += 1;
-        ctx.db.player_info().identity().update(winner_info);
-    }
-}
-
-// Helper function to emit game over events
-fn emit_game_over_events(state: &mut PlayingState) {
-    // Find the winner (player with lives > 0)
-    let winner = state.players.iter().find(|p| p.lives > 0);
-
-    // Emit events to all players
-    for player_events in &mut state.player_events {
-        let is_winner = winner.map_or(false, |w| {
-            w.player_identity == player_events.player_identity
-        });
-        player_events.events.push(if is_winner {
-            GameStateEvent::IWin
-        } else {
-            GameStateEvent::ILose
-        });
-    }
-}
-
 // Helper function to handle end of turn logic
 fn end_turn(state: &mut PlayingState, ctx: &ReducerContext) {
     // Clear current word and advance to next player
@@ -361,11 +330,31 @@ fn end_turn(state: &mut PlayingState, ctx: &ReducerContext) {
 
         // Update winner stats if there is a winner
         if let Some(winner) = state.players.iter().find(|p| p.lives > 0) {
-            update_winner_stats(winner, ctx);
+            if let Some(mut winner_info) = ctx
+                .db
+                .player_info()
+                .identity()
+                .find(&winner.player_identity)
+            {
+                winner_info.wins += 1;
+                ctx.db.player_info().identity().update(winner_info);
+            }
         }
 
         // Emit game over events
-        emit_game_over_events(state);
+        let winner = state.players.iter().find(|p| p.lives > 0);
+
+        // Emit events to all players
+        for player_events in &mut state.player_events {
+            let is_winner = winner.map_or(false, |w| {
+                w.player_identity == player_events.player_identity
+            });
+            player_events.events.push(if is_winner {
+                GameStateEvent::IWin
+            } else {
+                GameStateEvent::ILose
+            });
+        }
     }
 }
 
