@@ -835,13 +835,23 @@ pub fn game_countdown(ctx: &ReducerContext, _arg: GameCountdownSchedule) -> Resu
                 // Clone the settings first so we don't have multiple borrows
                 let settings_clone = countdown_state.settings.clone();
 
-                // Generate random starting player index using the reducer context's random generator
-                let starting_index = ctx.rng().next_u32() % settings_clone.players.len() as u32;
+                // Create a shuffled vector of player indices
+                let mut player_indices: Vec<usize> = (0..settings_clone.players.len()).collect();
+                for i in (1..player_indices.len()).rev() {
+                    let j = ctx.rng().next_u32() as usize % (i + 1);
+                    player_indices.swap(i, j);
+                }
 
-                // Create playing state
+                // Create shuffled players vector
+                let shuffled_players: Vec<PlayerGameData> = player_indices
+                    .iter()
+                    .map(|&i| settings_clone.players[i].clone())
+                    .collect();
+
+                // Create playing state with shuffled players
                 let mut playing_state = PlayingState {
-                    players: settings_clone.players.clone(),
-                    current_turn_index: starting_index,
+                    players: shuffled_players,
+                    current_turn_index: 0, // First player in shuffled list goes first
                     turn_number: 0,
                     settings: SettingsState {
                         turn_timeout_seconds: settings_clone.turn_timeout_seconds,
@@ -857,11 +867,12 @@ pub fn game_countdown(ctx: &ReducerContext, _arg: GameCountdownSchedule) -> Resu
                 // Pick initial random trigram
                 pick_random_trigram_and_update(&mut playing_state, ctx)?;
 
-                // Emit MyTurn event to the randomly chosen first player
-                if let Some(player_events) = playing_state.player_events.iter_mut().find(|pe| {
-                    pe.player_identity
-                        == playing_state.players[starting_index as usize].player_identity
-                }) {
+                // Emit MyTurn event to the first player in shuffled order
+                if let Some(player_events) = playing_state
+                    .player_events
+                    .iter_mut()
+                    .find(|pe| pe.player_identity == playing_state.players[0].player_identity)
+                {
                     player_events.events.push(GameStateEvent::MyTurn);
                 }
 
