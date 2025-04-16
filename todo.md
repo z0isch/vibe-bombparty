@@ -1,7 +1,7 @@
-- persist last guess
+- ~persist last guess~
 - example words when failed
 - win counter
-- countdown timer
+- ~countdown timer~
 - don't allow repeat trigrams
 - try timestamped inputs and rollback
 - countdown timer for start

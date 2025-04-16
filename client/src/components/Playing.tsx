@@ -2,6 +2,59 @@ import { PlayingState } from "../generated/playing_state_type";
 import { PlayerInfoTable } from "../generated/player_info_table_type";
 import { Player } from "./Player";
 import { DbConnection } from "../generated";
+import { useEffect, useRef, useState } from "react";
+
+// Circular countdown timer component
+function CircularCountdown({
+  timeLeft,
+  totalTime,
+}: {
+  timeLeft: number;
+  totalTime: number;
+}) {
+  const radius = 25;
+  const circumference = 2 * Math.PI * radius;
+  const progress = (timeLeft / totalTime) * circumference;
+  const isLowTime = timeLeft <= 3;
+
+  return (
+    <div className="relative inline-flex items-center justify-center">
+      <svg className="transform -rotate-90 w-20 h-20">
+        {/* Background circle */}
+        <circle
+          cx="40"
+          cy="40"
+          r={radius}
+          className="stroke-gray-700"
+          strokeWidth="6"
+          fill="transparent"
+        />
+        {/* Progress circle */}
+        <circle
+          cx="40"
+          cy="40"
+          r={radius}
+          className={`${
+            isLowTime ? "stroke-red-500" : "stroke-blue-500"
+          } transition-all duration-1000`}
+          strokeWidth="6"
+          strokeDasharray={circumference}
+          strokeDashoffset={circumference - progress}
+          fill="transparent"
+          strokeLinecap="round"
+        />
+      </svg>
+      {/* Centered time text */}
+      <div
+        className={`absolute font-mono text-2xl ${
+          isLowTime ? "text-red-500" : "text-gray-300"
+        }`}
+      >
+        {timeLeft}
+      </div>
+    </div>
+  );
+}
 
 interface PlayingProps {
   playingState: PlayingState;
@@ -16,6 +69,11 @@ export function Playing({
   connectionIdentity,
   conn,
 }: PlayingProps) {
+  const [timeLeft, setTimeLeft] = useState(
+    playingState.settings.turnTimeoutSeconds
+  );
+  const timerRef = useRef<number>();
+
   const handleUpdateWord = async (word: string) => {
     if (!conn) return;
     try {
@@ -32,6 +90,35 @@ export function Playing({
       // Silently handle errors
     }
   };
+
+  // Start/reset timer when turn changes
+  useEffect(() => {
+    // Reset timer
+    setTimeLeft(playingState.settings.turnTimeoutSeconds);
+
+    // Clear any existing timer
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+
+    // Start new timer
+    timerRef.current = window.setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 0) {
+          clearInterval(timerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 900);
+
+    // Cleanup timer on unmount
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [playingState.turnNumber, playingState.settings.turnTimeoutSeconds]);
 
   const currentPlayer = playingState.players[playingState.currentTurnIndex];
   const isGameOver =
@@ -87,18 +174,23 @@ export function Playing({
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="text-xl text-gray-300">
-            Turn #{playingState.turnNumber}
-          </div>
-          <div className="bg-gray-800 p-4 rounded-lg">
-            <div className="text-3xl font-bold text-yellow-400">
-              {playingState.currentTrigram}
+          <div className="relative flex items-center h-20">
+            <div className="w-20">
+              <CircularCountdown
+                timeLeft={timeLeft}
+                totalTime={playingState.settings.turnTimeoutSeconds}
+              />
             </div>
+            <div className="absolute inset-x-0 flex items-center justify-center pointer-events-none">
+              <div className="text-5xl font-bold text-yellow-400">
+                {playingState.currentTrigram}
+              </div>
+            </div>
+            <div className="w-20" /> {/* Matching space on the right */}
           </div>
         </div>
       )}
 
-      <h2 className="text-2xl mb-4">Players ({playingState.players.length})</h2>
       <div className="flex flex-col gap-2">
         {[...playingState.players]
           .sort((a, b) => {
