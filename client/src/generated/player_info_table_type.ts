@@ -35,6 +35,7 @@ export type PlayerInfoTable = {
   username: string,
   isOnline: boolean,
   lastActive: Timestamp,
+  wins: number,
 };
 
 /**
@@ -51,6 +52,7 @@ export namespace PlayerInfoTable {
       new ProductTypeElement("username", AlgebraicType.createStringType()),
       new ProductTypeElement("isOnline", AlgebraicType.createBoolType()),
       new ProductTypeElement("lastActive", AlgebraicType.createTimestampType()),
+      new ProductTypeElement("wins", AlgebraicType.createU32Type()),
     ]);
   }
 

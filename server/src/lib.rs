@@ -42,6 +42,7 @@ pub struct PlayerInfoTable {
     pub username: String,
     pub is_online: bool,
     pub last_active: Timestamp,
+    pub wins: u32, // Track number of wins
 }
 
 #[derive(Clone, SpacetimeType)]
@@ -201,6 +202,19 @@ fn is_game_over(state: &PlayingState) -> bool {
     players_with_lives <= 1
 }
 
+// Helper function to update the winner's win count
+fn update_winner_stats(winner: &PlayerGameData, ctx: &ReducerContext) {
+    if let Some(mut winner_info) = ctx
+        .db
+        .player_info()
+        .identity()
+        .find(&winner.player_identity)
+    {
+        winner_info.wins += 1;
+        ctx.db.player_info().identity().update(winner_info);
+    }
+}
+
 // Helper function to emit game over events
 fn emit_game_over_events(state: &mut PlayingState) {
     // Find the winner (player with lives > 0)
@@ -241,6 +255,12 @@ fn end_turn(state: &mut PlayingState, ctx: &ReducerContext) {
     } else {
         // Game is over, store example words for the final trigram
         state.failed_trigram_examples = get_example_words(&state.current_trigram, ctx);
+
+        // Update winner stats if there is a winner
+        if let Some(winner) = state.players.iter().find(|p| p.lives > 0) {
+            update_winner_stats(winner, ctx);
+        }
+
         // Emit game over events
         emit_game_over_events(state);
     }
@@ -605,6 +625,7 @@ pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), Str
             username,
             is_online: true,
             last_active: ctx.timestamp,
+            wins: 0, // Initialize wins to 0 for new players
         };
         ctx.db.player_info().insert(player_info);
     }

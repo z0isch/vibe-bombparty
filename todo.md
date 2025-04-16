@@ -1,6 +1,6 @@
 - ~persist last guess~
 - ~example words when failed~
-- win counter
+- ~win counter~
 - ~countdown timer~
 - ~don't allow repeat trigrams~
 - try timestamped inputs and rollback
