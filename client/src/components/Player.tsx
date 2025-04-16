@@ -56,6 +56,8 @@ export function Player({
   const [inputWord, setInputWord] = useState(player.currentWord);
   const [isShaking, setIsShaking] = useState(false);
   const [showNewLife, setShowNewLife] = useState(false);
+  const [isTimeUp, setIsTimeUp] = useState(false);
+  const [isCorrectGuess, setIsCorrectGuess] = useState(false);
   const [showFreeLetterAward, setShowFreeLetterAward] = useState<string | null>(
     null
   );
@@ -112,6 +114,28 @@ export function Player({
     }
   }, [events]);
 
+  // Handle time up event
+  useEffect(() => {
+    const timeUp = events?.some((e) => e.tag === "TimeUp");
+    if (timeUp) {
+      setIsTimeUp(true);
+      // Reset flash animation after it completes
+      const timer = setTimeout(() => setIsTimeUp(false), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [events]);
+
+  // Handle correct guess event
+  useEffect(() => {
+    const correctGuess = events?.some((e) => e.tag === "CorrectGuess");
+    if (correctGuess) {
+      setIsCorrectGuess(true);
+      // Reset flash animation after it completes
+      const timer = setTimeout(() => setIsCorrectGuess(false), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [events]);
+
   const handleWordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newWord = e.target.value;
     setInputWord(newWord);
@@ -127,9 +151,15 @@ export function Player({
 
   return (
     <div
-      className={`bg-gray-800 p-4 rounded ${
+      className={`p-4 rounded transition-colors duration-200 ${
         isTheirTurn ? "ring-2 ring-blue-400" : ""
-      } ${isShaking ? "shake" : ""}`}
+      } ${isShaking ? "shake" : ""} ${
+        isTimeUp
+          ? "bg-red-900"
+          : isCorrectGuess
+          ? "bg-green-900"
+          : "bg-gray-800"
+      }`}
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
