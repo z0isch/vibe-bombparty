@@ -702,16 +702,21 @@ pub fn update_turn_timeout(ctx: &ReducerContext, seconds: u32) -> Result<(), Str
     }
 }
 
-#[spacetimedb::reducer]
-pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), String> {
-    let player = PlayerGameData {
-        player_identity: ctx.sender,
+// Helper function to create a new PlayerGameData instance
+fn create_initial_player_game_data(player_identity: Identity) -> PlayerGameData {
+    PlayerGameData {
+        player_identity,
         current_word: String::new(),
         lives: 3,                        // Start with 3 lives
         used_letters: Vec::new(),        // Initialize empty used letters
         free_letters: Vec::new(),        // Initialize empty free letters
         last_valid_guess: String::new(), // Initialize empty last valid guess
-    };
+    }
+}
+
+#[spacetimedb::reducer]
+pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), String> {
+    let player = create_initial_player_game_data(ctx.sender);
 
     // Check if player info already exists
     if let Some(mut existing_player_info) = ctx.db.player_info().identity().find(&ctx.sender) {
@@ -906,14 +911,7 @@ pub fn restart_game(ctx: &ReducerContext) -> Result<(), String> {
                 let reset_players: Vec<PlayerGameData> = playing_state
                     .players
                     .iter()
-                    .map(|p| PlayerGameData {
-                        player_identity: p.player_identity,
-                        current_word: String::new(),
-                        lives: 3,                        // Reset to initial lives
-                        used_letters: Vec::new(),        // Reset used letters
-                        free_letters: Vec::new(),        // Reset free letters
-                        last_valid_guess: String::new(), // Reset last valid guess
-                    })
+                    .map(|p| create_initial_player_game_data(p.player_identity))
                     .collect();
 
                 // Transition back to settings state
