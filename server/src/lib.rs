@@ -174,14 +174,16 @@ lazy_static::lazy_static! {
         word_set.words
     };
 
-    static ref TRIGRAM_DATA: TrigramData = {
-        deserialize(TRIGRAM_DATA_BYTES)
-            .expect("Failed to deserialize trigram data")
+    static ref TRIGRAM_DATA: Vec<TrigramFreq> = {
+        let d: TrigramData = deserialize(TRIGRAM_DATA_BYTES)
+            .expect("Failed to deserialize trigram data");
+        d.trigrams
     };
 
-    static ref TRIGRAM_MAP: TrigramMap = {
-        deserialize(TRIGRAM_MAP_BYTES)
-            .expect("Failed to deserialize trigram map")
+    static ref TRIGRAM_MAP: HashMap<String, Vec<String>> = {
+        let d: TrigramMap = deserialize(TRIGRAM_MAP_BYTES)
+            .expect("Failed to deserialize trigram map");
+        d.trigrams
     };
 }
 
@@ -532,7 +534,6 @@ fn pick_random_trigram_and_update(
 ) -> Result<(), String> {
     // Filter trigrams to only those with frequency > 200 and not used yet
     let available_trigrams: Vec<&TrigramFreq> = TRIGRAM_DATA
-        .trigrams
         .iter()
         .filter(|t| t.frequency > 200 && !state.used_trigrams.contains(&t.trigram.to_uppercase()))
         .collect();
@@ -937,7 +938,7 @@ pub fn game_countdown(ctx: &ReducerContext, _arg: GameCountdownSchedule) -> Resu
 // Helper function to get random long words containing a trigram
 fn get_example_words(trigram: &str, ctx: &ReducerContext) -> Vec<String> {
     let trigram_lower = trigram.to_lowercase();
-    if let Some(words) = TRIGRAM_MAP.trigrams.get(&trigram_lower) {
+    if let Some(words) = TRIGRAM_MAP.get(&trigram_lower) {
         // Filter for words longer than 10 characters
         let long_words: Vec<String> = words.iter().filter(|w| w.len() > 10).cloned().collect();
 
