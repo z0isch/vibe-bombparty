@@ -13,7 +13,6 @@ interface PlayerProps {
   isTheirTurn: boolean;
   onUpdateWord: (word: string) => void;
   conn: DbConnection;
-  events: GameStateEvent[] | undefined;
   currentTrigram: string;
 }
 
@@ -24,7 +23,6 @@ export function Player({
   isTheirTurn,
   onUpdateWord,
   conn,
-  events,
   currentTrigram,
 }: PlayerProps) {
   const [inputWord, setInputWord] = useState(player.currentWord);

@@ -227,13 +227,6 @@ export function Playing({
                 isTheirTurn={isTheirTurn && !isGameOver}
                 onUpdateWord={handleUpdateWord}
                 conn={conn}
-                events={
-                  playingState.playerEvents.find(
-                    (pe) =>
-                      pe.playerIdentity.toHexString() ===
-                      player.playerIdentity.toHexString()
-                  )?.events
-                }
                 currentTrigram={playingState.currentTrigram}
               />
             );
