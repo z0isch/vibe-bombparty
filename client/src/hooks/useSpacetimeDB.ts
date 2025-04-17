@@ -5,6 +5,7 @@ import { PlayerGameData } from "../generated/player_game_data_type";
 import { PlayerInfoTable } from "../generated/player_info_table_type";
 import { Identity } from "@clockworklabs/spacetimedb-sdk";
 import { useSoundEffects } from "./useSoundEffects";
+import { eventQueue } from "../eventQueue";
 
 export interface SpacetimeDBState {
   game: Game | null;
@@ -78,11 +79,17 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
     // Register callbacks
     conn.db.game.onInsert((ctx, gameData) => {
       setGame(gameData);
+      if (gameData.state.tag === "Playing") {
+        eventQueue.publishEvents(gameData.state.value.playerEvents);
+      }
       playSounds(gameData);
     });
 
     conn.db.game.onUpdate((ctx, oldGameData, newGameData) => {
       setGame(newGameData);
+      if (newGameData.state.tag === "Playing") {
+        eventQueue.publishEvents(newGameData.state.value.playerEvents);
+      }
       playSounds(newGameData);
     });
 
