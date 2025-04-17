@@ -4,25 +4,22 @@ use spacetimedb::{
     rand::RngCore, Identity, ReducerContext, ScheduleAt, SpacetimeType, Table, TimeDuration,
     Timestamp,
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 mod common;
 mod player_logic;
 
 #[derive(Deserialize)]
-struct TrigramData {
-    trigrams: Vec<TrigramFreq>,
-}
-
-#[derive(Deserialize)]
-struct TrigramFreq {
-    trigram: String,
-    frequency: u32,
-}
-
-#[derive(Deserialize)]
 struct TrigramMap {
     trigrams: HashMap<String, Vec<String>>,
+}
+static TRIGRAM_MAP_BYTES: &[u8] = include_bytes!("../assets/trigram-words.bin");
+lazy_static::lazy_static! {
+    static ref TRIGRAM_MAP: HashMap<String, Vec<String>> = {
+        let d: TrigramMap = deserialize(TRIGRAM_MAP_BYTES)
+            .expect("Failed to deserialize trigram map");
+        d.trigrams
+    };
 }
 
 #[derive(Clone, SpacetimeType)]
@@ -270,35 +267,6 @@ pub enum Move {
     GuessWord(GuessWordMove),
 }
 
-#[derive(Deserialize)]
-struct WordSet {
-    words: HashSet<String>,
-}
-
-static WORD_SET_BYTES: &[u8] = include_bytes!("../assets/words.bin");
-static TRIGRAM_FREQS_BYTES: &[u8] = include_bytes!("../assets/histogram.bin");
-static TRIGRAM_MAP_BYTES: &[u8] = include_bytes!("../assets/trigram-words.bin");
-
-lazy_static::lazy_static! {
-    static ref VALID_WORDS: HashSet<String> = {
-        let word_set: WordSet = deserialize(WORD_SET_BYTES)
-            .expect("Failed to deserialize word set");
-        word_set.words
-    };
-
-    static ref TRIGRAM_FREQS: Vec<TrigramFreq> = {
-        let d: TrigramData = deserialize(TRIGRAM_FREQS_BYTES)
-            .expect("Failed to deserialize trigram data");
-        d.trigrams
-    };
-
-    static ref TRIGRAM_MAP: HashMap<String, Vec<String>> = {
-        let d: TrigramMap = deserialize(TRIGRAM_MAP_BYTES)
-            .expect("Failed to deserialize trigram map");
-        d.trigrams
-    };
-}
-
 // Helper function to check if game is over (only one player has lives)
 fn is_game_over(state: &PlayingState) -> bool {
     let players_with_lives = state.players.iter().filter(|p| p.lives > 0).count();
@@ -371,16 +339,18 @@ fn init_player_events(players: &[PlayerGameData]) -> Vec<PlayerEvents> {
 
 // Helper function to check if a word is valid
 fn is_word_valid(word: &str, trigram: &str, used_words: &[String]) -> Result<(), String> {
-    if !VALID_WORDS.contains(word) {
-        return Err("Word not in dictionary".to_string());
-    }
-    if !word.contains(trigram) {
-        return Err(format!("Word does not contain trigram '{}'", trigram));
-    }
     if used_words.contains(&word.to_string()) {
         return Err("Word has already been used".to_string());
     }
-    Ok(())
+    match TRIGRAM_MAP.get(&trigram.to_uppercase()) {
+        Some(words) => {
+            if words.contains(&word.to_uppercase()) {
+                return Ok(());
+            }
+            return Err("Word not in dictionary".to_string());
+        }
+        None => return Err("Trigram not found".to_string()),
+    }
 }
 
 fn make_move(
@@ -623,9 +593,10 @@ fn pick_random_trigram_and_update(
     ctx: &ReducerContext,
 ) -> Result<(), String> {
     // Filter trigrams to only those with frequency > 200 and not used yet
-    let available_trigrams: Vec<&TrigramFreq> = TRIGRAM_FREQS
+    let available_trigrams: Vec<&String> = TRIGRAM_MAP
         .iter()
-        .filter(|t| t.frequency > 200 && !state.used_trigrams.contains(&t.trigram.to_uppercase()))
+        .filter(|(t, words)| !state.used_trigrams.contains(t) && words.len() > 200)
+        .map(|(t, _)| t)
         .collect();
 
     if available_trigrams.is_empty() {
@@ -634,10 +605,7 @@ fn pick_random_trigram_and_update(
 
     // Pick a random trigram from available ones
     let random_index = ctx.rng().next_u32() as usize % available_trigrams.len();
-    let new_trigram = available_trigrams[random_index]
-        .trigram
-        .clone()
-        .to_uppercase();
+    let new_trigram = available_trigrams[random_index].clone().to_uppercase();
 
     // Add the new trigram to used trigrams and update current trigram
     state.used_trigrams.push(new_trigram.clone());
@@ -924,8 +892,7 @@ pub fn restart_game(ctx: &ReducerContext) -> Result<(), String> {
 
 // Helper function to get random long words containing a trigram
 fn get_example_words(trigram: &str, ctx: &ReducerContext) -> Vec<String> {
-    let trigram_lower = trigram.to_lowercase();
-    if let Some(words) = TRIGRAM_MAP.get(&trigram_lower) {
+    if let Some(words) = TRIGRAM_MAP.get(&trigram.to_uppercase()) {
         // Filter for words longer than 10 characters
         let long_words: Vec<String> = words.iter().filter(|w| w.len() > 10).cloned().collect();
 
