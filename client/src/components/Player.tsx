@@ -131,6 +131,7 @@ export function Player({
         <div className="flex items-center gap-1">
           {[...Array(Math.max(3, player.lives))].map((_, i) => (
             <motion.svg
+              key={i}
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
               fill="currentColor"
