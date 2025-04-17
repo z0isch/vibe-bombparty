@@ -33,14 +33,14 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
 
   // Set up sound effects when connection is established
   useEffect(() => {
-    if (!conn) return;
+    if (!conn?.identity) return;
 
     // Set up sound effects and get cleanup function
     const cleanupSoundEffects = setupSoundEffects(conn.identity);
 
     // Clean up when connection changes or component unmounts
     return cleanupSoundEffects;
-  }, [conn]);
+  }, [conn?.identity]);
 
   // Helper function to get current player from game
   const getCurrentPlayer = () => {
