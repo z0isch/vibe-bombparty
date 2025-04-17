@@ -63,13 +63,10 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
   useEffect(() => {
     if (!conn || !isConnected || isSubscribed) return;
 
-    console.log("Setting up subscription...");
-
     // Set up subscription
     conn
       .subscriptionBuilder()
       .onApplied(() => {
-        console.log("Subscription applied");
         setIsSubscribed(true);
       })
       .onError((error) => {
@@ -90,7 +87,6 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
     });
 
     conn.db.game.onDelete((ctx, gameData) => {
-      console.log("Game deleted:", gameData);
       setGame(null);
     });
 
@@ -132,7 +128,6 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
               identity: Identity,
               token: string
             ) => {
-              console.log("Connected to SpacetimeDB");
               setIsConnected(true);
 
               // Store connection identity and token
@@ -146,7 +141,6 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
             setIsSubscribed(false);
             setGame(null);
             setIsConnected(false);
-            console.log("Disconnected from SpacetimeDB");
           })
           .build();
 

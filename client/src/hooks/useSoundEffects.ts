@@ -17,10 +17,6 @@ function isThisEventForMe(
   events: PlayerEvents,
   currentPlayerIdentity: Identity | undefined
 ): boolean {
-  console.log(
-    events.playerIdentity.toHexString(),
-    currentPlayerIdentity?.toHexString()
-  );
   return (
     events.playerIdentity.toHexString() === currentPlayerIdentity?.toHexString()
   );
