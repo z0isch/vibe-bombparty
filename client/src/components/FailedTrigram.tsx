@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 
 interface FailedTrigramProps {
   trigram: string;
@@ -10,7 +10,7 @@ export function FailedTrigram({ trigram, examples }: FailedTrigramProps) {
 
   return (
     <div className="bg-blue-900/20 border border-blue-500/50 rounded-lg p-4">
-      <span className="text-blue-400 font-medium">{trigram}</span>:{" "}
+      <span className="text-blue-400 font-medium">{trigram}</span>:{' '}
       <div className="inline-flex gap-1 flex-wrap">
         {examples.map((word, index) => (
           <a

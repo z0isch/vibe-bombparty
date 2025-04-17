@@ -1,14 +1,13 @@
-import { useEffect } from "react";
-import { Identity } from "@clockworklabs/spacetimedb-sdk";
-import { GameStateEvent } from "../generated/game_state_event_type";
-import { eventQueue } from "../eventQueue";
+import { Identity } from '@clockworklabs/spacetimedb-sdk';
+
+import { useEffect } from 'react';
+
+import { eventQueue } from '../eventQueue';
+import { GameStateEvent } from '../generated/game_state_event_type';
 
 type EventHandler = (event: GameStateEvent, playerIdentity: Identity) => void;
 
-export function usePlayerEvents(
-  playerIdentityFilter?: Identity,
-  onEvent?: EventHandler
-) {
+export function usePlayerEvents(playerIdentityFilter?: Identity, onEvent?: EventHandler) {
   useEffect(() => {
     if (!onEvent) return;
 

@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
-import { useSpacetimeDB } from "./hooks/useSpacetimeDB";
-import { Playing } from "./components/Playing";
-import { Settings } from "./components/Settings";
-import { Countdown } from "./components/Countdown";
-import { GameState } from "./generated/game_state_type";
+import { useEffect, useState } from 'react';
+
+import { Countdown } from './components/Countdown';
+import { Playing } from './components/Playing';
+import { Settings } from './components/Settings';
+import { GameState } from './generated/game_state_type';
+import { useSpacetimeDB } from './hooks/useSpacetimeDB';
 
 function App() {
   const [
@@ -14,7 +15,7 @@ function App() {
   const handleJoinGame = async () => {
     if (!isConnected) return;
 
-    const username = prompt("Enter your username:");
+    const username = prompt('Enter your username:');
     if (!username) return;
 
     try {
@@ -28,7 +29,7 @@ function App() {
     if (!game || !conn) return null;
 
     switch (game.state.tag) {
-      case "Settings":
+      case 'Settings':
         return (
           <Settings
             turnTimeoutSeconds={game.state.value.turnTimeoutSeconds}
@@ -39,14 +40,9 @@ function App() {
             isCurrentPlayer={!!currentPlayer}
           />
         );
-      case "Countdown":
-        return (
-          <Countdown
-            countdownState={game.state.value}
-            playerInfos={playerInfos}
-          />
-        );
-      case "Playing":
+      case 'Countdown':
+        return <Countdown countdownState={game.state.value} playerInfos={playerInfos} />;
+      case 'Playing':
         if (!connectionIdentity) return null;
         return (
           <Playing

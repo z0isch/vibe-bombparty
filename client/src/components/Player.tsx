@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from "react";
-import { PlayerGameData } from "../generated/player_game_data_type";
-import { PlayerInfoTable } from "../generated/player_info_table_type";
-import { DbConnection } from "../generated";
-import { GameStateEvent } from "../generated/game_state_event_type";
-import { usePlayerEvents } from "../hooks/usePlayerEvents";
-import { motion } from "motion/react";
+import { Identity } from '@clockworklabs/spacetimedb-sdk';
+import { motion } from 'motion/react';
+
+import { useEffect, useRef, useState } from 'react';
+
+import { DbConnection, GameStateEvent } from '../generated';
+import { PlayerGameData } from '../generated/player_game_data_type';
+import { PlayerInfoTable } from '../generated/player_info_table_type';
+import { usePlayerEvents } from '../hooks/usePlayerEvents';
 
 interface PlayerProps {
   player: PlayerGameData;
@@ -14,6 +16,25 @@ interface PlayerProps {
   onUpdateWord: (word: string) => void;
   conn: DbConnection;
   currentTrigram: string;
+}
+
+function useEventMotionProps<Tag extends GameStateEvent['tag']>(
+  playerIdentity: Identity,
+  tag: Tag,
+  animationProps: (event: Extract<GameStateEvent, { tag: Tag }> | null) => Record<string, any>
+) {
+  const [event, setEvent] = useState<Extract<GameStateEvent, { tag: Tag }> | null>(null);
+  usePlayerEvents(playerIdentity, (e) => {
+    if (e.tag === tag) {
+      setEvent(e as Extract<GameStateEvent, { tag: Tag }>);
+    }
+  });
+  return {
+    ...animationProps(event),
+    onAnimationComplete: () => {
+      setEvent(null);
+    },
+  };
 }
 
 export function Player({
@@ -30,32 +51,46 @@ export function Player({
   const [showNewLife, setShowNewLife] = useState(false);
   const [isTimeUp, setIsTimeUp] = useState(false);
   const [isCorrectGuess, setIsCorrectGuess] = useState(false);
-  const [showFreeLetterAward, setShowFreeLetterAward] = useState<string | null>(
-    null
-  );
+  const [showFreeLetterAward, setShowFreeLetterAward] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const freeLetterAwardMotionProps = useEventMotionProps(
+    player.playerIdentity,
+    'FreeLetterAward',
+    (event) => ({
+      animate:
+        showFreeLetterAward === event?.value.letter
+          ? {
+              scale: [1, 2, 1],
+            }
+          : {},
+      transition: {
+        duration: 0.5,
+      },
+    })
+  );
+
   usePlayerEvents(player.playerIdentity, (event) => {
     switch (event.tag) {
-      case "InvalidGuess":
+      case 'InvalidGuess':
         setIsShaking(true);
         break;
-      case "TimeUp":
+      case 'TimeUp':
         setIsTimeUp(true);
         break;
-      case "CorrectGuess":
+      case 'CorrectGuess':
         setIsCorrectGuess(true);
         break;
-      case "LifeEarned":
+      case 'LifeEarned':
         setShowNewLife(true);
         break;
-      case "FreeLetterAward":
+      case 'FreeLetterAward':
         setShowFreeLetterAward(event.value.letter);
         break;
-      case "MyTurn":
+      case 'MyTurn':
         break;
-      case "IWin":
+      case 'IWin':
         break;
-      case "ILose":
+      case 'ILose':
         break;
       default: {
         const exhaustiveCheck: never = event;
@@ -89,25 +124,25 @@ export function Player({
   };
 
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && isTheirTurn && isCurrentPlayer) {
+    if (e.key === 'Enter' && isTheirTurn && isCurrentPlayer) {
       await conn.reducers.submitWord(inputWord);
-      setInputWord(""); // Clear the input after submission
+      setInputWord(''); // Clear the input after submission
     }
   };
 
   return (
     <motion.div
-      className={`p-4 rounded ${isTheirTurn ? "ring-2 ring-blue-400" : ""}`}
+      className={`p-4 rounded ${isTheirTurn ? 'ring-2 ring-blue-400' : ''}`}
       initial={{
-        backgroundColor: "#1F2937",
+        backgroundColor: '#1F2937',
       }}
       animate={{
         rotate: isShaking ? [0, -1, 1, 0] : [0, 0, 0, 0],
         backgroundColor: isTimeUp
-          ? "#7F1D1D" // bg-red-900
+          ? '#7F1D1D' // bg-red-900
           : isCorrectGuess
-          ? "#14532D" // bg-green-900
-          : "#1F2937", // bg-gray-800
+            ? '#14532D' // bg-green-900
+            : '#1F2937', // bg-gray-800
       }}
       transition={{
         rotate: { duration: 0.5 },
@@ -123,7 +158,7 @@ export function Player({
         <div className="flex items-center gap-2">
           <div
             className={`w-2 h-2 rounded-full ${
-              playerInfo.isOnline ? "bg-green-500" : "bg-red-500"
+              playerInfo.isOnline ? 'bg-green-500' : 'bg-red-500'
             }`}
           />
           <p className="font-medium">{playerInfo.username}</p>
@@ -137,15 +172,15 @@ export function Player({
               fill="currentColor"
               className={`w-6 h-6`}
               initial={{
-                color: i < player.lives ? "#EF4444" : "#374151", // text-red-500 : text-gray-700
+                color: i < player.lives ? '#EF4444' : '#374151', // text-red-500 : text-gray-700
               }}
               animate={{
                 color:
                   i < player.lives
                     ? showNewLife && i === player.lives - 1
-                      ? "#FCD34D" // text-yellow-300
-                      : "#EF4444" // text-red-500
-                    : "#374151", // text-gray-700
+                      ? '#FCD34D' // text-yellow-300
+                      : '#EF4444' // text-red-500
+                    : '#374151', // text-gray-700
                 scale: showNewLife && i === player.lives - 1 ? [1, 1.2, 1] : 1,
               }}
               transition={{
@@ -165,22 +200,20 @@ export function Player({
           value={isTheirTurn ? inputWord : player.currentWord}
           onChange={handleWordChange}
           onKeyDown={handleKeyDown}
-          placeholder={
-            !isTheirTurn && player.lastValidGuess ? player.lastValidGuess : ""
-          }
+          placeholder={!isTheirTurn && player.lastValidGuess ? player.lastValidGuess : ''}
           className={`w-full bg-gray-700 text-white px-3 py-2 rounded min-h-[2.5rem] focus:outline-none ${
             isTheirTurn && isCurrentPlayer
               ? inputWord.length > 10 && containsTrigram
-                ? "ring-2 ring-yellow-400 bg-yellow-900/20" // Gold highlight for long words with trigram
+                ? 'ring-2 ring-yellow-400 bg-yellow-900/20' // Gold highlight for long words with trigram
                 : containsTrigram && inputWord
-                ? "ring-2 ring-green-400"
-                : "focus:ring-2 focus:ring-blue-500"
-              : "opacity-75 cursor-not-allowed"
+                  ? 'ring-2 ring-green-400'
+                  : 'focus:ring-2 focus:ring-blue-500'
+              : 'opacity-75 cursor-not-allowed'
           }`}
           disabled={!isTheirTurn || !isCurrentPlayer}
         />
         <div className="flex flex-wrap gap-1 mt-2">
-          {Array.from("ABCDEFGHIJKLMNOPQRSTUVWXYZ").map((letter) => {
+          {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').map((letter) => {
             const isUsed = player.usedLetters.includes(letter);
             const isFree = player.freeLetters.includes(letter);
             const isNewlyAwarded = showFreeLetterAward === letter;
@@ -189,24 +222,12 @@ export function Player({
                 key={letter}
                 className={`px-1.5 py-0.5 rounded text-sm ${
                   isFree
-                    ? "bg-yellow-900 text-yellow-300" // Gold for free letters
+                    ? 'bg-yellow-900 text-yellow-300' // Gold for free letters
                     : isUsed
-                    ? "bg-gray-700 text-white" // Black/white for used letters
-                    : "bg-gray-700 text-gray-500" // Grey for unused letters
+                      ? 'bg-gray-700 text-white' // Black/white for used letters
+                      : 'bg-gray-700 text-gray-500' // Grey for unused letters
                 }`}
-                animate={
-                  isNewlyAwarded
-                    ? {
-                        scale: [1, 2, 1],
-                      }
-                    : {}
-                }
-                transition={{
-                  duration: 0.5,
-                }}
-                onAnimationComplete={() => {
-                  setShowFreeLetterAward(null);
-                }}
+                {...freeLetterAwardMotionProps}
               >
                 {letter}
               </motion.span>

@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
-import { DbConnection } from "../generated";
-import { PlayerGameData } from "../generated/player_game_data_type";
-import { PlayerInfoTable } from "../generated/player_info_table_type";
+import { useEffect, useState } from 'react';
+
+import { DbConnection } from '../generated';
+import { PlayerGameData } from '../generated/player_game_data_type';
+import { PlayerInfoTable } from '../generated/player_info_table_type';
 
 interface SettingsProps {
   turnTimeoutSeconds: number;
@@ -65,9 +66,7 @@ export function Settings({
         <div className="space-y-2">
           {players.map((player) => {
             const playerInfo = playerInfos.find(
-              (info) =>
-                info.identity.toHexString() ===
-                player.playerIdentity.toHexString()
+              (info) => info.identity.toHexString() === player.playerIdentity.toHexString()
             );
             if (!playerInfo) return null;
 
@@ -78,12 +77,12 @@ export function Settings({
               >
                 <div
                   className={`w-2 h-2 rounded-full ${
-                    playerInfo.isOnline ? "bg-green-500" : "bg-red-500"
+                    playerInfo.isOnline ? 'bg-green-500' : 'bg-red-500'
                   }`}
                 />
                 <span className="flex-grow">{playerInfo.username}</span>
                 <span className="text-yellow-400 font-medium mr-4">
-                  {playerInfo.wins} {playerInfo.wins === 1 ? "win" : "wins"}
+                  {playerInfo.wins} {playerInfo.wins === 1 ? 'win' : 'wins'}
                 </span>
                 <button
                   onClick={async () => {
@@ -121,7 +120,7 @@ export function Settings({
           </button>
           <p className="mt-2 text-sm text-gray-400">
             Start the game with {players.length} player
-            {players.length !== 1 && "s"}
+            {players.length !== 1 && 's'}
           </p>
         </div>
       )}

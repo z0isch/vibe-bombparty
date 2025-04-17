@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
-import * as moduleBindings from "../generated";
-import { Game } from "../generated/game_type";
-import { PlayerGameData } from "../generated/player_game_data_type";
-import { PlayerInfoTable } from "../generated/player_info_table_type";
-import { Identity } from "@clockworklabs/spacetimedb-sdk";
-import { setupSoundEffects } from "../soundEffects";
-import { eventQueue } from "../eventQueue";
+import { Identity } from '@clockworklabs/spacetimedb-sdk';
+
+import { useEffect, useState } from 'react';
+
+import { eventQueue } from '../eventQueue';
+import * as moduleBindings from '../generated';
+import { Game } from '../generated/game_type';
+import { PlayerGameData } from '../generated/player_game_data_type';
+import { PlayerInfoTable } from '../generated/player_info_table_type';
+import { setupSoundEffects } from '../soundEffects';
 
 export interface SpacetimeDBState {
   game: Game | null;
@@ -25,9 +27,7 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
   const [conn, setConn] = useState<moduleBindings.DbConnection | null>(null);
   const [game, setGame] = useState<Game | null>(null);
   const [playerInfos, setPlayerInfos] = useState<PlayerInfoTable[]>([]);
-  const [connectionIdentity, setConnectionIdentity] = useState<string | null>(
-    null
-  );
+  const [connectionIdentity, setConnectionIdentity] = useState<string | null>(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
@@ -46,7 +46,7 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
   const getCurrentPlayer = () => {
     if (!connectionIdentity || !game) return null;
     switch (game.state.tag) {
-      case "Countdown":
+      case 'Countdown':
         return (
           game.state.value.settings.players.find(
             (p) => p.playerIdentity.toHexString() === connectionIdentity
@@ -55,9 +55,8 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
       default:
     }
     return (
-      game.state.value.players.find(
-        (p) => p.playerIdentity.toHexString() === connectionIdentity
-      ) || null
+      game.state.value.players.find((p) => p.playerIdentity.toHexString() === connectionIdentity) ||
+      null
     );
   };
 
@@ -72,22 +71,22 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
         setIsSubscribed(true);
       })
       .onError((error) => {
-        console.error("Subscription error:", error);
+        console.error('Subscription error:', error);
         setIsSubscribed(false);
       })
-      .subscribe(["SELECT * FROM game", "SELECT * FROM player_info"]);
+      .subscribe(['SELECT * FROM game', 'SELECT * FROM player_info']);
 
     // Register callbacks
     conn.db.game.onInsert((ctx, gameData) => {
       setGame(gameData);
-      if (gameData.state.tag === "Playing") {
+      if (gameData.state.tag === 'Playing') {
         eventQueue.publishEvents(gameData.state.value.playerEvents);
       }
     });
 
     conn.db.game.onUpdate((ctx, oldGameData, newGameData) => {
       setGame(newGameData);
-      if (newGameData.state.tag === "Playing") {
+      if (newGameData.state.tag === 'Playing') {
         eventQueue.publishEvents(newGameData.state.value.playerEvents);
       }
     });
@@ -104,18 +103,14 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
     conn.db.playerInfo.onUpdate((ctx, oldPlayerInfo, newPlayerInfo) => {
       setPlayerInfos((prev) =>
         prev.map((p) =>
-          p.identity.toHexString() === newPlayerInfo.identity.toHexString()
-            ? newPlayerInfo
-            : p
+          p.identity.toHexString() === newPlayerInfo.identity.toHexString() ? newPlayerInfo : p
         )
       );
     });
 
     conn.db.playerInfo.onDelete((ctx, playerInfo) => {
       setPlayerInfos((prev) =>
-        prev.filter(
-          (p) => p.identity.toHexString() !== playerInfo.identity.toHexString()
-        )
+        prev.filter((p) => p.identity.toHexString() !== playerInfo.identity.toHexString())
       );
     });
   }, [conn, isConnected, isSubscribed, connectionIdentity]);
@@ -126,20 +121,16 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
       try {
         const connection = await moduleBindings.DbConnection.builder()
           .withUri(import.meta.env.VITE_SPACETIME_WS_URI)
-          .withToken(localStorage.getItem("token") || undefined)
-          .withModuleName("vibe-bombparty")
+          .withToken(localStorage.getItem('token') || undefined)
+          .withModuleName('vibe-bombparty')
           .onConnect(
-            (
-              connection: moduleBindings.DbConnection,
-              identity: Identity,
-              token: string
-            ) => {
+            (connection: moduleBindings.DbConnection, identity: Identity, token: string) => {
               setIsConnected(true);
 
               // Store connection identity and token
               const identityStr = identity.toHexString();
               setConnectionIdentity(identityStr);
-              localStorage.setItem("token", token);
+              localStorage.setItem('token', token);
             }
           )
           .onDisconnect(() => {
@@ -152,7 +143,7 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
 
         setConn(connection);
       } catch (error) {
-        console.error("Failed to connect:", error);
+        console.error('Failed to connect:', error);
       }
     };
 
@@ -165,7 +156,7 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
   }, []);
 
   const registerPlayer = async (username: string) => {
-    if (!conn) throw new Error("Not connected to SpacetimeDB");
+    if (!conn) throw new Error('Not connected to SpacetimeDB');
     await conn.reducers.registerPlayer(username);
   };
 

@@ -1,6 +1,7 @@
-import { CountdownState } from "../generated/countdown_state_type";
-import { PlayerInfoTable } from "../generated/player_info_table_type";
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
+
+import { CountdownState } from '../generated/countdown_state_type';
+import { PlayerInfoTable } from '../generated/player_info_table_type';
 
 interface CountdownProps {
   countdownState: CountdownState;
@@ -24,17 +25,13 @@ export function Countdown({ countdownState, playerInfos }: CountdownProps) {
 
   return (
     <div className="text-center space-y-8">
-      <div className="text-8xl font-bold text-yellow-400 animate-pulse">
-        {timeLeft}
-      </div>
+      <div className="text-8xl font-bold text-yellow-400 animate-pulse">{timeLeft}</div>
       <div className="space-y-4">
         <h2 className="text-2xl font-medium">Players</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {countdownState.settings.players.map((player) => {
             const playerInfo = playerInfos.find(
-              (info) =>
-                info.identity.toHexString() ===
-                player.playerIdentity.toHexString()
+              (info) => info.identity.toHexString() === player.playerIdentity.toHexString()
             );
             if (!playerInfo) return null;
 
@@ -45,7 +42,7 @@ export function Countdown({ countdownState, playerInfos }: CountdownProps) {
               >
                 <div
                   className={`w-2 h-2 rounded-full ${
-                    playerInfo.isOnline ? "bg-green-500" : "bg-red-500"
+                    playerInfo.isOnline ? 'bg-green-500' : 'bg-red-500'
                   }`}
                 />
                 <span>{playerInfo.username}</span>

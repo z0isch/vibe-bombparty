@@ -1,6 +1,7 @@
-import { Identity } from "@clockworklabs/spacetimedb-sdk";
-import { GameStateEvent } from "./generated/game_state_event_type";
-import { PlayerEvents } from "./generated/player_events_type";
+import { Identity } from '@clockworklabs/spacetimedb-sdk';
+
+import { GameStateEvent } from './generated/game_state_event_type';
+import { PlayerEvents } from './generated/player_events_type';
 
 type EventHandler = (event: GameStateEvent, playerIdentity: Identity) => void;
 
@@ -27,10 +28,7 @@ class EventQueue {
     return EventQueue.instance;
   }
 
-  public subscribe(
-    handler: EventHandler,
-    playerIdentityFilter?: Identity
-  ): number {
+  public subscribe(handler: EventHandler, playerIdentityFilter?: Identity): number {
     const id = this.nextSubscriptionId++;
     this.subscriptions.set(id, { id, handler, playerIdentityFilter });
     return id;

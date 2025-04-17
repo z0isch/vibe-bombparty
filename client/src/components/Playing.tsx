@@ -1,10 +1,11 @@
-import { PlayingState } from "../generated/playing_state_type";
-import { PlayerInfoTable } from "../generated/player_info_table_type";
-import { Player } from "./Player";
-import { DbConnection } from "../generated";
-import { useEffect, useRef, useState } from "react";
-import { CircularCountdown } from "./CircularCountdown";
-import { FailedTrigram } from "./FailedTrigram";
+import { useEffect, useRef, useState } from 'react';
+
+import { DbConnection } from '../generated';
+import { PlayerInfoTable } from '../generated/player_info_table_type';
+import { PlayingState } from '../generated/playing_state_type';
+import { CircularCountdown } from './CircularCountdown';
+import { FailedTrigram } from './FailedTrigram';
+import { Player } from './Player';
 
 interface PlayingProps {
   playingState: PlayingState;
@@ -13,15 +14,8 @@ interface PlayingProps {
   conn: DbConnection;
 }
 
-export function Playing({
-  playingState,
-  playerInfos,
-  connectionIdentity,
-  conn,
-}: PlayingProps) {
-  const [timeLeft, setTimeLeft] = useState(
-    playingState.settings.turnTimeoutSeconds
-  );
+export function Playing({ playingState, playerInfos, connectionIdentity, conn }: PlayingProps) {
+  const [timeLeft, setTimeLeft] = useState(playingState.settings.turnTimeoutSeconds);
   const timerRef = useRef<number>();
 
   const handleUpdateWord = async (word: string) => {
@@ -71,19 +65,15 @@ export function Playing({
   }, [playingState.turnNumber, playingState.settings.turnTimeoutSeconds]);
 
   const currentPlayer = playingState.players[playingState.currentTurnIndex];
-  const isGameOver =
-    playingState.players.filter((p) => p.lives > 0).length <= 1;
+  const isGameOver = playingState.players.filter((p) => p.lives > 0).length <= 1;
 
   // Find the winner if game is over
-  const winner = isGameOver
-    ? playingState.players.find((p) => p.lives > 0)
-    : null;
+  const winner = isGameOver ? playingState.players.find((p) => p.lives > 0) : null;
 
   // Get winner's info
   const winnerInfo = winner
     ? playerInfos.find(
-        (info) =>
-          info.identity.toHexString() === winner.playerIdentity.toHexString()
+        (info) => info.identity.toHexString() === winner.playerIdentity.toHexString()
       )
     : null;
 
@@ -101,18 +91,12 @@ export function Playing({
       )}
       {isGameOver ? (
         <div className="text-center mb-8">
-          <h2 className="text-4xl font-bold mb-4 text-yellow-400">
-            Game Over!
-          </h2>
+          <h2 className="text-4xl font-bold mb-4 text-yellow-400">Game Over!</h2>
           {winnerInfo && (
             <div className="bg-gray-800 p-6 rounded-lg shadow-lg inline-block">
               <div className="text-2xl mb-2">Winner:</div>
-              <div className="text-3xl font-bold text-green-400">
-                {winnerInfo.username}
-              </div>
-              <div className="mt-4 text-gray-400">
-                Survived {playingState.turnNumber} turns!
-              </div>
+              <div className="text-3xl font-bold text-green-400">{winnerInfo.username}</div>
+              <div className="mt-4 text-gray-400">Survived {playingState.turnNumber} turns!</div>
               {/* Show failed trigram examples at game over */}
               {playingState.failedTrigramExamples.length > 0 && (
                 <div className="mt-4">
@@ -152,11 +136,7 @@ export function Playing({
           {playingState.failedTrigramExamples.length > 0 && (
             <div className="mb-4">
               <FailedTrigram
-                trigram={
-                  playingState.usedTrigrams[
-                    playingState.usedTrigrams.length - 2
-                  ]
-                }
+                trigram={playingState.usedTrigrams[playingState.usedTrigrams.length - 2]}
                 examples={playingState.failedTrigramExamples}
               />
             </div>
@@ -169,14 +149,10 @@ export function Playing({
           .sort((a, b) => {
             // Find indices in original array
             const indexA = playingState.players.findIndex(
-              (p) =>
-                p.playerIdentity.toHexString() ===
-                a.playerIdentity.toHexString()
+              (p) => p.playerIdentity.toHexString() === a.playerIdentity.toHexString()
             );
             const indexB = playingState.players.findIndex(
-              (p) =>
-                p.playerIdentity.toHexString() ===
-                b.playerIdentity.toHexString()
+              (p) => p.playerIdentity.toHexString() === b.playerIdentity.toHexString()
             );
 
             // Find current player's index
@@ -198,25 +174,19 @@ export function Playing({
           .map((player) => {
             // Find the corresponding player info
             const playerInfo = playerInfos.find(
-              (info) =>
-                info.identity.toHexString() ===
-                player.playerIdentity.toHexString()
+              (info) => info.identity.toHexString() === player.playerIdentity.toHexString()
             );
             if (!playerInfo) return null;
 
             // Check if this is the current player (you)
-            const isCurrentPlayer =
-              player.playerIdentity.toHexString() === connectionIdentity;
+            const isCurrentPlayer = player.playerIdentity.toHexString() === connectionIdentity;
 
             // Check if it's this player's turn by finding their index in the original array
             const playerIndex = playingState.players.findIndex(
-              (p) =>
-                p.playerIdentity.toHexString() ===
-                player.playerIdentity.toHexString()
+              (p) => p.playerIdentity.toHexString() === player.playerIdentity.toHexString()
             );
             const isTheirTurn =
-              playerIndex ===
-              playingState.currentTurnIndex % playingState.players.length;
+              playerIndex === playingState.currentTurnIndex % playingState.players.length;
 
             return (
               <Player
