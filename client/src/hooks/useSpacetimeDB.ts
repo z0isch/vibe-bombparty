@@ -4,7 +4,7 @@ import { Game } from "../generated/game_type";
 import { PlayerGameData } from "../generated/player_game_data_type";
 import { PlayerInfoTable } from "../generated/player_info_table_type";
 import { Identity } from "@clockworklabs/spacetimedb-sdk";
-import { useSoundEffects } from "./useSoundEffects";
+import { setupSoundEffects } from "../soundEffects";
 import { eventQueue } from "../eventQueue";
 
 export interface SpacetimeDBState {
@@ -30,7 +30,17 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
   );
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
-  const playSound = useSoundEffects();
+
+  // Set up sound effects when connection is established
+  useEffect(() => {
+    if (!conn) return;
+
+    // Set up sound effects and get cleanup function
+    const cleanupSoundEffects = setupSoundEffects(conn.identity);
+
+    // Clean up when connection changes or component unmounts
+    return cleanupSoundEffects;
+  }, [conn]);
 
   // Helper function to get current player from game
   const getCurrentPlayer = () => {
@@ -49,15 +59,6 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
         (p) => p.playerIdentity.toHexString() === connectionIdentity
       ) || null
     );
-  };
-
-  // Helper function to check for player events and play sounds
-  const playSounds = (newGameData: Game) => {
-    if (newGameData.state.tag !== "Playing") return;
-
-    newGameData.state.value.playerEvents.forEach((playerEvent) => {
-      playSound(playerEvent, conn?.identity);
-    });
   };
 
   // Set up subscription and callbacks
@@ -82,7 +83,6 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
       if (gameData.state.tag === "Playing") {
         eventQueue.publishEvents(gameData.state.value.playerEvents);
       }
-      playSounds(gameData);
     });
 
     conn.db.game.onUpdate((ctx, oldGameData, newGameData) => {
@@ -90,7 +90,6 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
       if (newGameData.state.tag === "Playing") {
         eventQueue.publishEvents(newGameData.state.value.playerEvents);
       }
-      playSounds(newGameData);
     });
 
     conn.db.game.onDelete((ctx, gameData) => {
