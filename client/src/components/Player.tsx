@@ -115,8 +115,7 @@ export function Player({
         rotate: { duration: 0.5 },
         backgroundColor: { duration: 0.5 },
       }}
-      onAnimationComplete={(d) => {
-        console.log(d);
+      onAnimationComplete={() => {
         setIsShaking(false);
         setIsTimeUp(false);
         setIsCorrectGuess(false);
