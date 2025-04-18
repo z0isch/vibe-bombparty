@@ -36,7 +36,8 @@ function playGameSound(soundPath: string) {
  * @returns A cleanup function to unsubscribe from events
  */
 export function setupSoundEffects(currentPlayerIdentity: Identity | undefined): () => void {
-  const handleEvent = (event: GameStateEvent, playerIdentity: Identity) => {
+  // Subscribe to the event queue
+  const subscriptionId = eventQueue.subscribe((event: GameStateEvent, playerIdentity: Identity) => {
     switch (event.tag) {
       case 'InvalidGuess':
         playGameSound('sounds/Errors and Cancel/Cancel 1.m4a');
@@ -71,7 +72,7 @@ export function setupSoundEffects(currentPlayerIdentity: Identity | undefined): 
         }
         break;
       case 'LifeEarned':
-        playGameSound('sounds/Complete and Success/Success 5.m4a');
+        playGameSound('sounds/Complete and Success/Success 1.m4a');
         break;
       case 'FreeLetterAward':
         playGameSound('sounds/Complete and Success/Success 3.m4a');
@@ -79,10 +80,7 @@ export function setupSoundEffects(currentPlayerIdentity: Identity | undefined): 
       default:
         assertNever(event);
     }
-  };
-
-  // Subscribe to the event queue
-  const subscriptionId = eventQueue.subscribe(handleEvent);
+  });
 
   // Return cleanup function
   return () => {

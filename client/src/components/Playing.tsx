@@ -64,7 +64,6 @@ export function Playing({ playingState, playerInfos, connectionIdentity, conn }:
     };
   }, [playingState.turnNumber, playingState.settings.turnTimeoutSeconds]);
 
-  const currentPlayer = playingState.players[playingState.currentTurnIndex];
   const isGameOver = playingState.players.filter((p) => p.lives > 0).length <= 1;
 
   // Find the winner if game is over
