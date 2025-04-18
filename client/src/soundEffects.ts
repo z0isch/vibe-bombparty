@@ -2,7 +2,6 @@ import { Identity } from '@clockworklabs/spacetimedb-sdk';
 
 import { eventQueue } from './eventQueue';
 import { GameStateEvent } from './generated/game_state_event_type';
-import { PlayerEvents } from './generated/player_events_type';
 
 /**
  * Helper function to ensure exhaustive type checking

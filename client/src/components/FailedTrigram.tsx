@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface FailedTrigramProps {
   trigram: string;
   examples: string[];

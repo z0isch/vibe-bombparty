@@ -2,7 +2,6 @@ import { motion } from 'motion/react';
 
 import { useEffect, useRef, useState } from 'react';
 
-import { eventQueue } from '../eventQueue';
 import { DbConnection } from '../generated';
 import { PlayerGameData } from '../generated/player_game_data_type';
 import { PlayerInfoTable } from '../generated/player_info_table_type';

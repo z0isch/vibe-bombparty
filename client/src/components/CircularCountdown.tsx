@@ -1,5 +1,3 @@
-import React from 'react';
-
 interface CircularCountdownProps {
   timeLeft: number;
   totalTime: number;

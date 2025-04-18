@@ -1,9 +1,6 @@
-import { useEffect, useState } from 'react';
-
 import { Countdown } from './components/Countdown';
 import { Playing } from './components/Playing';
 import { Settings } from './components/Settings';
-import { GameState } from './generated/game_state_type';
 import { useSpacetimeDB } from './hooks/useSpacetimeDB';
 
 function App() {
@@ -52,10 +49,11 @@ function App() {
             conn={conn}
           />
         );
-      default:
+      default: {
         // This ensures we handle all possible states
         const _exhaustiveCheck: never = game.state;
         return null;
+      }
     }
   }
 

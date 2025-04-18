@@ -91,16 +91,16 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
       }
     });
 
-    conn.db.game.onDelete((ctx, gameData) => {
+    conn.db.game.onDelete(() => {
       setGame(null);
     });
 
     // Register player info callbacks
-    conn.db.playerInfo.onInsert((ctx, playerInfo) => {
+    conn.db.playerInfo.onInsert((_ctx, playerInfo) => {
       setPlayerInfos((prev) => [...prev, playerInfo]);
     });
 
-    conn.db.playerInfo.onUpdate((ctx, oldPlayerInfo, newPlayerInfo) => {
+    conn.db.playerInfo.onUpdate((_ctx, _oldPlayerInfo, newPlayerInfo) => {
       setPlayerInfos((prev) =>
         prev.map((p) =>
           p.identity.toHexString() === newPlayerInfo.identity.toHexString() ? newPlayerInfo : p
@@ -153,7 +153,7 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
       conn?.disconnect();
       setConn(null);
     };
-  }, []);
+  }, [conn]);
 
   const registerPlayer = async (username: string) => {
     if (!conn) throw new Error('Not connected to SpacetimeDB');
