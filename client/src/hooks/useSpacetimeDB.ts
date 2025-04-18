@@ -153,7 +153,7 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
       conn?.disconnect();
       setConn(null);
     };
-  }, [conn]);
+  }, []);
 
   const registerPlayer = async (username: string) => {
     if (!conn) throw new Error('Not connected to SpacetimeDB');
