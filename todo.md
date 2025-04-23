@@ -9,3 +9,4 @@
 - multiple games
 - use https://www.dictionary.com/browse/proboscidean
 - trigram dictionary is wrong at the end
+- highlight in gold other players
