@@ -7,3 +7,4 @@
 - ~countdown timer for start~
 - ~shuffle players on start~
 - multiple games
+- use https://www.dictionary.com/browse/proboscidean
