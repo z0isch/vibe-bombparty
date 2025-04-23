@@ -299,6 +299,10 @@ fn end_turn(state: &mut PlayingState, ctx: &ReducerContext) {
         // Schedule timeout for the next player's turn
         schedule_turn_timeout(ctx, state);
     } else {
+        // Store example for the final trigram before game ends
+        let final_trigram = state.current_trigram.clone();
+        store_trigram_example(state, &final_trigram, ctx);
+
         // Update winner stats if there is a winner
         if let Some(winner) = state.players.iter().find(|p| p.lives > 0) {
             if let Some(mut winner_info) = ctx
@@ -584,16 +588,12 @@ fn get_game(ctx: &ReducerContext) -> Option<Game> {
     ctx.db.game().id().find(&1)
 }
 
-// Helper function to pick a random trigram and update used trigrams
-fn pick_random_trigram_and_update(
-    state: &mut PlayingState,
-    ctx: &ReducerContext,
-) -> Result<(), String> {
-    // First, if we have a current trigram, create a TrigramExample for it
-    if !state.current_trigram.is_empty() {
+// Helper function to store a trigram example
+fn store_trigram_example(state: &mut PlayingState, trigram: &str, ctx: &ReducerContext) {
+    if !trigram.is_empty() {
         let example = TrigramExample {
-            trigram: state.current_trigram.clone(),
-            example_words: get_example_words(&state.current_trigram, ctx),
+            trigram: trigram.to_string(),
+            example_words: get_example_words(trigram, ctx),
         };
 
         // Add to examples, maintaining max size of 3
@@ -602,6 +602,17 @@ fn pick_random_trigram_and_update(
             state.trigram_examples.pop();
         }
     }
+}
+
+// Helper function to pick a random trigram and update used trigrams
+fn pick_random_trigram_and_update(
+    state: &mut PlayingState,
+    ctx: &ReducerContext,
+) -> Result<(), String> {
+    // Store current trigram in a temporary variable
+    let current_trigram = state.current_trigram.clone();
+    // Store example for current trigram before changing it
+    store_trigram_example(state, &current_trigram, ctx);
 
     // Filter trigrams to only those with frequency > 200 and not used yet
     let available_trigrams: Vec<&String> = TRIGRAM_MAP

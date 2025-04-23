@@ -7,10 +7,10 @@
 - ~countdown timer for start~
 - ~shuffle players on start~
 - multiple games
-  ~ use https://www.dictionary.com/browse/proboscidean ~
-- trigram dictionary is wrong at the end?
+- ~ use https://www.dictionary.com/browse/proboscidean ~
+- ~ trigram dictionary is wrong at the end? ~
 - highlight in gold other players long words
 - slowly diminishing timer
 - hardness of trigram slider
 - block if you can get the same word
-  ~ show example words even when right ~
+- ~ show example words even when right ~

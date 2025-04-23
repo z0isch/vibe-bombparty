@@ -10,7 +10,6 @@ export function ExampleTrigrams({ trigramExamples }: ExampleTrigramsProps) {
 
   return (
     <div className="bg-blue-900/20 border border-blue-500/50 rounded-lg p-4">
-      <h3 className="text-blue-300 font-medium mb-2">Recent Examples:</h3>
       <div className="space-y-2">
         {trigramExamples.map((example, exampleIndex) => (
           <div
@@ -25,7 +24,7 @@ export function ExampleTrigrams({ trigramExamples }: ExampleTrigramsProps) {
                   href={`https://www.merriam-webster.com/dictionary/${word.toLowerCase()}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-200 px-3 py-1 rounded hover:bg-blue-800/40 transition-colors cursor-pointer inline-flex items-center gap-1"
+                  className="text-blue-200 text-sm px-3 py-1 rounded hover:bg-blue-800/40 transition-colors cursor-pointer inline-flex items-center gap-1"
                 >
                   {word}
                   <svg
