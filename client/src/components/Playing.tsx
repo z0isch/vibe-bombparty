@@ -4,7 +4,7 @@ import { DbConnection } from '../generated';
 import { PlayerInfoTable } from '../generated/player_info_table_type';
 import { PlayingState } from '../generated/playing_state_type';
 import { CircularCountdown } from './CircularCountdown';
-import { FailedTrigram } from './FailedTrigram';
+import { ExampleTrigrams } from './ExampleTrigrams';
 import { Player } from './Player';
 
 interface PlayingProps {
@@ -96,13 +96,10 @@ export function Playing({ playingState, playerInfos, connectionIdentity, conn }:
               <div className="text-2xl mb-2">Winner:</div>
               <div className="text-3xl font-bold text-green-400">{winnerInfo.username}</div>
               <div className="mt-4 text-gray-400">Survived {playingState.turnNumber} turns!</div>
-              {/* Show failed trigram examples at game over */}
-              {playingState.failedTrigramExamples.length > 0 && (
+              {/* Show trigram examples at game over */}
+              {playingState.trigramExamples.length > 0 && (
                 <div className="mt-4">
-                  <FailedTrigram
-                    trigram={playingState.currentTrigram}
-                    examples={playingState.failedTrigramExamples}
-                  />
+                  <ExampleTrigrams trigramExamples={playingState.trigramExamples} />
                 </div>
               )}
               <button
@@ -131,13 +128,10 @@ export function Playing({ playingState, playerInfos, connectionIdentity, conn }:
             <div className="w-20" /> {/* Matching space on the right */}
           </div>
 
-          {/* Failed Trigram Examples Section */}
-          {playingState.failedTrigramExamples.length > 0 && (
+          {/* Trigram Examples Section */}
+          {playingState.trigramExamples.length > 0 && (
             <div className="mb-4">
-              <FailedTrigram
-                trigram={playingState.usedTrigrams[playingState.usedTrigrams.length - 2]}
-                examples={playingState.failedTrigramExamples}
-              />
+              <ExampleTrigrams trigramExamples={playingState.trigramExamples} />
             </div>
           )}
         </div>

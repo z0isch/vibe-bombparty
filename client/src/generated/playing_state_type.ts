@@ -33,6 +33,7 @@ import {
 import { SettingsState as __SettingsState } from "./settings_state_type";
 import { PlayerGameData as __PlayerGameData } from "./player_game_data_type";
 import { PlayerEvents as __PlayerEvents } from "./player_events_type";
+import { TrigramExample as __TrigramExample } from "./trigram_example_type";
 
 export type PlayingState = {
   players: __PlayerGameData[],
@@ -44,7 +45,7 @@ export type PlayingState = {
   failedPlayers: Identity[],
   usedWords: string[],
   usedTrigrams: string[],
-  failedTrigramExamples: string[],
+  trigramExamples: __TrigramExample[],
 };
 
 /**
@@ -66,7 +67,7 @@ export namespace PlayingState {
       new ProductTypeElement("failedPlayers", AlgebraicType.createArrayType(AlgebraicType.createIdentityType())),
       new ProductTypeElement("usedWords", AlgebraicType.createArrayType(AlgebraicType.createStringType())),
       new ProductTypeElement("usedTrigrams", AlgebraicType.createArrayType(AlgebraicType.createStringType())),
-      new ProductTypeElement("failedTrigramExamples", AlgebraicType.createArrayType(AlgebraicType.createStringType())),
+      new ProductTypeElement("trigramExamples", AlgebraicType.createArrayType(__TrigramExample.getTypeScriptAlgebraicType())),
     ]);
   }
 

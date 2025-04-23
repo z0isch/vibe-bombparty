@@ -90,6 +90,8 @@ import { PlayingState } from "./playing_state_type.ts";
 export { PlayingState };
 import { SettingsState } from "./settings_state_type.ts";
 export { SettingsState };
+import { TrigramExample } from "./trigram_example_type.ts";
+export { TrigramExample };
 import { TurnTimeoutSchedule } from "./turn_timeout_schedule_type.ts";
 export { TurnTimeoutSchedule };
 

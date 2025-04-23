@@ -56,6 +56,12 @@ pub struct PlayerEvents {
 }
 
 #[derive(Clone, SpacetimeType)]
+pub struct TrigramExample {
+    pub trigram: String,
+    pub example_words: Vec<String>,
+}
+
+#[derive(Clone, SpacetimeType)]
 pub struct PlayingState {
     pub players: Vec<PlayerGameData>,
     pub current_turn_index: u32, // Index of the current player's turn
@@ -66,7 +72,7 @@ pub struct PlayingState {
     pub failed_players: Vec<Identity>, // Players who have failed with the current trigram
     pub used_words: Vec<String>, // Track words that have been used
     pub used_trigrams: Vec<String>, // Track trigrams that have been used
-    pub failed_trigram_examples: Vec<String>, // Example words for the last trigram that all players failed on
+    pub trigram_examples: Vec<TrigramExample>, // Last 3 trigrams and their example words
 }
 
 #[derive(Clone, SpacetimeType)]
@@ -214,7 +220,7 @@ pub fn game_countdown(ctx: &ReducerContext, _arg: GameCountdownSchedule) -> Resu
                     failed_players: Vec::new(),
                     used_words: Vec::new(),
                     used_trigrams: Vec::new(),
-                    failed_trigram_examples: Vec::new(), // Initialize empty failed trigram examples
+                    trigram_examples: Vec::new(), // Initialize empty trigram examples list
                 };
 
                 // Pick initial random trigram
@@ -293,9 +299,6 @@ fn end_turn(state: &mut PlayingState, ctx: &ReducerContext) {
         // Schedule timeout for the next player's turn
         schedule_turn_timeout(ctx, state);
     } else {
-        // Game is over, store example words for the final trigram
-        state.failed_trigram_examples = get_example_words(&state.current_trigram, ctx);
-
         // Update winner stats if there is a winner
         if let Some(winner) = state.players.iter().find(|p| p.lives > 0) {
             if let Some(mut winner_info) = ctx
@@ -418,9 +421,6 @@ fn make_move(
 
                     // If all active players have failed, get example words and pick a new trigram
                     if all_active_failed {
-                        // Store example words for the failed trigram before changing it
-                        state.failed_trigram_examples =
-                            get_example_words(&state.current_trigram, ctx);
                         pick_random_trigram_and_update(state, ctx)?;
                         state.failed_players.clear();
                     }
@@ -464,9 +464,6 @@ fn make_move(
 
                             // Add word to used words list
                             state.used_words.push(word.clone());
-
-                            // Clear failed trigram examples since we had a successful word
-                            state.failed_trigram_examples.clear();
 
                             // Update player's used letters and last valid guess
                             let current_player =
@@ -592,6 +589,20 @@ fn pick_random_trigram_and_update(
     state: &mut PlayingState,
     ctx: &ReducerContext,
 ) -> Result<(), String> {
+    // First, if we have a current trigram, create a TrigramExample for it
+    if !state.current_trigram.is_empty() {
+        let example = TrigramExample {
+            trigram: state.current_trigram.clone(),
+            example_words: get_example_words(&state.current_trigram, ctx),
+        };
+
+        // Add to examples, maintaining max size of 3
+        state.trigram_examples.insert(0, example);
+        if state.trigram_examples.len() > 3 {
+            state.trigram_examples.pop();
+        }
+    }
+
     // Filter trigrams to only those with frequency > 200 and not used yet
     let available_trigrams: Vec<&String> = TRIGRAM_MAP
         .iter()
@@ -610,6 +621,7 @@ fn pick_random_trigram_and_update(
     // Add the new trigram to used trigrams and update current trigram
     state.used_trigrams.push(new_trigram.clone());
     state.current_trigram = new_trigram;
+
     Ok(())
 }
 
