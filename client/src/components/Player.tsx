@@ -112,13 +112,15 @@ export function Player({
           onKeyDown={handleKeyDown}
           placeholder={!isTheirTurn && player.lastValidGuess ? player.lastValidGuess : ''}
           className={`w-full bg-gray-700 text-white px-3 py-2 rounded min-h-[2.5rem] focus:outline-none ${
-            isTheirTurn && isCurrentPlayer
+            isTheirTurn
               ? inputWord.length > 10 && containsTrigram
                 ? 'ring-2 ring-yellow-400 bg-yellow-900/20' // Gold highlight for long words with trigram
                 : containsTrigram && inputWord
                   ? 'ring-2 ring-green-400'
                   : 'focus:ring-2 focus:ring-blue-500'
-              : 'opacity-75 cursor-not-allowed'
+              : player.lastValidGuess.length > 10
+                ? 'ring-2 ring-yellow-400 bg-yellow-900/20 opacity-75 cursor-not-allowed' // Gold highlight for other players' long words
+                : 'opacity-75 cursor-not-allowed'
           }`}
           disabled={!isTheirTurn || !isCurrentPlayer}
         />
