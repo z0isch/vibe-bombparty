@@ -113,88 +113,96 @@ export function Playing({ playingState, playerInfos, connectionIdentity, conn }:
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="relative flex items-center h-20">
-            <div className="w-20">
+          <div className="relative h-20">
+            <div className="absolute left-0 top-1/2 -translate-y-1/2">
               <CircularCountdown
                 timeLeft={timeLeft}
                 totalTime={playingState.settings.turnTimeoutSeconds}
               />
             </div>
-            <div className="absolute inset-x-0 flex items-center justify-center pointer-events-none">
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
               <div className="text-5xl font-bold text-yellow-400">
                 {playingState.currentTrigram}
               </div>
             </div>
-            <div className="w-20" /> {/* Matching space on the right */}
           </div>
 
-          {/* Trigram Examples Section */}
-          {playingState.trigramExamples.length > 0 && (
-            <div className="mb-4">
-              <ExampleTrigrams trigramExamples={playingState.trigramExamples} />
+          {/* Grid layout for trigrams and players */}
+          <div className="grid grid-cols-5 gap-4">
+            {/* Trigram Examples Section - Takes up 1/5 of the space */}
+            <div className="col-span-1">
+              {playingState.trigramExamples.length > 0 && (
+                <div className="sticky top-4">
+                  <ExampleTrigrams trigramExamples={playingState.trigramExamples} />
+                </div>
+              )}
             </div>
-          )}
+
+            {/* Players Section - Takes up 4/5 of the space */}
+            <div className="col-span-4">
+              <div className="flex flex-col gap-2">
+                {[...playingState.players]
+                  .sort((a, b) => {
+                    // Find indices in original array
+                    const indexA = playingState.players.findIndex(
+                      (p) => p.playerIdentity.toHexString() === a.playerIdentity.toHexString()
+                    );
+                    const indexB = playingState.players.findIndex(
+                      (p) => p.playerIdentity.toHexString() === b.playerIdentity.toHexString()
+                    );
+
+                    // Find current player's index
+                    const currentPlayerIndex = playingState.players.findIndex(
+                      (p) => p.playerIdentity.toHexString() === connectionIdentity
+                    );
+
+                    // Calculate positions relative to current player (not current turn)
+                    const relativeA =
+                      (indexA - currentPlayerIndex + playingState.players.length) %
+                      playingState.players.length;
+                    const relativeB =
+                      (indexB - currentPlayerIndex + playingState.players.length) %
+                      playingState.players.length;
+
+                    // Sort by relative position to current player
+                    return relativeA - relativeB;
+                  })
+                  .map((player) => {
+                    // Find the corresponding player info
+                    const playerInfo = playerInfos.find(
+                      (info) => info.identity.toHexString() === player.playerIdentity.toHexString()
+                    );
+                    if (!playerInfo) return null;
+
+                    // Check if this is the current player (you)
+                    const isCurrentPlayer =
+                      player.playerIdentity.toHexString() === connectionIdentity;
+
+                    // Check if it's this player's turn by finding their index in the original array
+                    const playerIndex = playingState.players.findIndex(
+                      (p) => p.playerIdentity.toHexString() === player.playerIdentity.toHexString()
+                    );
+                    const isTheirTurn =
+                      playerIndex === playingState.currentTurnIndex % playingState.players.length;
+
+                    return (
+                      <Player
+                        key={player.playerIdentity.toHexString()}
+                        player={player}
+                        playerInfo={playerInfo}
+                        isCurrentPlayer={isCurrentPlayer}
+                        isTheirTurn={isTheirTurn && !isGameOver}
+                        onUpdateWord={handleUpdateWord}
+                        conn={conn}
+                        currentTrigram={playingState.currentTrigram}
+                      />
+                    );
+                  })}
+              </div>
+            </div>
+          </div>
         </div>
       )}
-
-      <div className="flex flex-col gap-2">
-        {[...playingState.players]
-          .sort((a, b) => {
-            // Find indices in original array
-            const indexA = playingState.players.findIndex(
-              (p) => p.playerIdentity.toHexString() === a.playerIdentity.toHexString()
-            );
-            const indexB = playingState.players.findIndex(
-              (p) => p.playerIdentity.toHexString() === b.playerIdentity.toHexString()
-            );
-
-            // Find current player's index
-            const currentPlayerIndex = playingState.players.findIndex(
-              (p) => p.playerIdentity.toHexString() === connectionIdentity
-            );
-
-            // Calculate positions relative to current player (not current turn)
-            const relativeA =
-              (indexA - currentPlayerIndex + playingState.players.length) %
-              playingState.players.length;
-            const relativeB =
-              (indexB - currentPlayerIndex + playingState.players.length) %
-              playingState.players.length;
-
-            // Sort by relative position to current player
-            return relativeA - relativeB;
-          })
-          .map((player) => {
-            // Find the corresponding player info
-            const playerInfo = playerInfos.find(
-              (info) => info.identity.toHexString() === player.playerIdentity.toHexString()
-            );
-            if (!playerInfo) return null;
-
-            // Check if this is the current player (you)
-            const isCurrentPlayer = player.playerIdentity.toHexString() === connectionIdentity;
-
-            // Check if it's this player's turn by finding their index in the original array
-            const playerIndex = playingState.players.findIndex(
-              (p) => p.playerIdentity.toHexString() === player.playerIdentity.toHexString()
-            );
-            const isTheirTurn =
-              playerIndex === playingState.currentTurnIndex % playingState.players.length;
-
-            return (
-              <Player
-                key={player.playerIdentity.toHexString()}
-                player={player}
-                playerInfo={playerInfo}
-                isCurrentPlayer={isCurrentPlayer}
-                isTheirTurn={isTheirTurn && !isGameOver}
-                onUpdateWord={handleUpdateWord}
-                conn={conn}
-                currentTrigram={playingState.currentTrigram}
-              />
-            );
-          })}
-      </div>
     </div>
   );
 }

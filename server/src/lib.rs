@@ -596,11 +596,8 @@ fn store_trigram_example(state: &mut PlayingState, trigram: &str, ctx: &ReducerC
             example_words: get_example_words(trigram, ctx),
         };
 
-        // Add to examples, maintaining max size of 3
+        // Add to examples at the beginning
         state.trigram_examples.insert(0, example);
-        if state.trigram_examples.len() > 3 {
-            state.trigram_examples.pop();
-        }
     }
 }
 

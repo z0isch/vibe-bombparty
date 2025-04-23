@@ -119,8 +119,8 @@ export function Player({
                   ? 'ring-2 ring-green-400'
                   : 'focus:ring-2 focus:ring-blue-500'
               : player.lastValidGuess.length > 10
-                ? 'ring-2 ring-yellow-400 bg-yellow-900/20 opacity-75 cursor-not-allowed' // Gold highlight for other players' long words
-                : 'opacity-75 cursor-not-allowed'
+                ? 'ring-2 ring-yellow-400 bg-yellow-900/20 text-gray-400 cursor-not-allowed' // Gold highlight for other players' long words
+                : 'text-gray-400 cursor-not-allowed'
           }`}
           disabled={!isTheirTurn || !isCurrentPlayer}
         />
