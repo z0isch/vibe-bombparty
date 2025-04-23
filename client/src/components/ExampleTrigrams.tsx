@@ -22,7 +22,7 @@ export function ExampleTrigrams({ trigramExamples }: ExampleTrigramsProps) {
               {example.exampleWords.map((word, wordIndex) => (
                 <a
                   key={wordIndex}
-                  href={`https://www.dictionary.com/browse/${word.toLowerCase()}`}
+                  href={`https://www.merriam-webster.com/dictionary/${word.toLowerCase()}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-blue-200 px-3 py-1 rounded hover:bg-blue-800/40 transition-colors cursor-pointer inline-flex items-center gap-1"
