@@ -60,6 +60,8 @@ import { GameTableHandle } from "./game_table.ts";
 export { GameTableHandle };
 import { GameCountdownScheduleTableHandle } from "./game_countdown_schedule_table.ts";
 export { GameCountdownScheduleTableHandle };
+import { GameStateTableHandle } from "./game_state_table.ts";
+export { GameStateTableHandle };
 import { PlayerInfoTableHandle } from "./player_info_table.ts";
 export { PlayerInfoTableHandle };
 import { TurnTimeoutScheduleTableHandle } from "./turn_timeout_schedule_table.ts";
@@ -78,6 +80,8 @@ import { GameState } from "./game_state_type.ts";
 export { GameState };
 import { GameStateEvent } from "./game_state_event_type.ts";
 export { GameStateEvent };
+import { GameStateTable } from "./game_state_table_type.ts";
+export { GameStateTable };
 import { InvalidGuessEvent } from "./invalid_guess_event_type.ts";
 export { InvalidGuessEvent };
 import { PlayerEvents } from "./player_events_type.ts";
@@ -106,6 +110,11 @@ const REMOTE_MODULE = {
       tableName: "game_countdown_schedule",
       rowType: GameCountdownSchedule.getTypeScriptAlgebraicType(),
       primaryKey: "scheduledId",
+    },
+    game_state: {
+      tableName: "game_state",
+      rowType: GameStateTable.getTypeScriptAlgebraicType(),
+      primaryKey: "gameId",
     },
     player_info: {
       tableName: "player_info",
@@ -238,75 +247,83 @@ export class RemoteReducers {
     this.connection.offReducer("identity_disconnected", callback);
   }
 
-  registerPlayer(username: string) {
-    const __args = { username };
+  registerPlayer(gameId: number, username: string) {
+    const __args = { gameId, username };
     let __writer = new BinaryWriter(1024);
     RegisterPlayer.getTypeScriptAlgebraicType().serialize(__writer, __args);
     let __argsBuffer = __writer.getBuffer();
     this.connection.callReducer("register_player", __argsBuffer, this.setCallReducerFlags.registerPlayerFlags);
   }
 
-  onRegisterPlayer(callback: (ctx: ReducerEventContext, username: string) => void) {
+  onRegisterPlayer(callback: (ctx: ReducerEventContext, gameId: number, username: string) => void) {
     this.connection.onReducer("register_player", callback);
   }
 
-  removeOnRegisterPlayer(callback: (ctx: ReducerEventContext, username: string) => void) {
+  removeOnRegisterPlayer(callback: (ctx: ReducerEventContext, gameId: number, username: string) => void) {
     this.connection.offReducer("register_player", callback);
   }
 
-  removePlayer(playerIdentity: Identity) {
-    const __args = { playerIdentity };
+  removePlayer(gameId: number, playerIdentity: Identity) {
+    const __args = { gameId, playerIdentity };
     let __writer = new BinaryWriter(1024);
     RemovePlayer.getTypeScriptAlgebraicType().serialize(__writer, __args);
     let __argsBuffer = __writer.getBuffer();
     this.connection.callReducer("remove_player", __argsBuffer, this.setCallReducerFlags.removePlayerFlags);
   }
 
-  onRemovePlayer(callback: (ctx: ReducerEventContext, playerIdentity: Identity) => void) {
+  onRemovePlayer(callback: (ctx: ReducerEventContext, gameId: number, playerIdentity: Identity) => void) {
     this.connection.onReducer("remove_player", callback);
   }
 
-  removeOnRemovePlayer(callback: (ctx: ReducerEventContext, playerIdentity: Identity) => void) {
+  removeOnRemovePlayer(callback: (ctx: ReducerEventContext, gameId: number, playerIdentity: Identity) => void) {
     this.connection.offReducer("remove_player", callback);
   }
 
-  restartGame() {
-    this.connection.callReducer("restart_game", new Uint8Array(0), this.setCallReducerFlags.restartGameFlags);
+  restartGame(gameId: number) {
+    const __args = { gameId };
+    let __writer = new BinaryWriter(1024);
+    RestartGame.getTypeScriptAlgebraicType().serialize(__writer, __args);
+    let __argsBuffer = __writer.getBuffer();
+    this.connection.callReducer("restart_game", __argsBuffer, this.setCallReducerFlags.restartGameFlags);
   }
 
-  onRestartGame(callback: (ctx: ReducerEventContext) => void) {
+  onRestartGame(callback: (ctx: ReducerEventContext, gameId: number) => void) {
     this.connection.onReducer("restart_game", callback);
   }
 
-  removeOnRestartGame(callback: (ctx: ReducerEventContext) => void) {
+  removeOnRestartGame(callback: (ctx: ReducerEventContext, gameId: number) => void) {
     this.connection.offReducer("restart_game", callback);
   }
 
-  startGame() {
-    this.connection.callReducer("start_game", new Uint8Array(0), this.setCallReducerFlags.startGameFlags);
+  startGame(gameId: number) {
+    const __args = { gameId };
+    let __writer = new BinaryWriter(1024);
+    StartGame.getTypeScriptAlgebraicType().serialize(__writer, __args);
+    let __argsBuffer = __writer.getBuffer();
+    this.connection.callReducer("start_game", __argsBuffer, this.setCallReducerFlags.startGameFlags);
   }
 
-  onStartGame(callback: (ctx: ReducerEventContext) => void) {
+  onStartGame(callback: (ctx: ReducerEventContext, gameId: number) => void) {
     this.connection.onReducer("start_game", callback);
   }
 
-  removeOnStartGame(callback: (ctx: ReducerEventContext) => void) {
+  removeOnStartGame(callback: (ctx: ReducerEventContext, gameId: number) => void) {
     this.connection.offReducer("start_game", callback);
   }
 
-  submitWord(word: string) {
-    const __args = { word };
+  submitWord(gameId: number, word: string) {
+    const __args = { gameId, word };
     let __writer = new BinaryWriter(1024);
     SubmitWord.getTypeScriptAlgebraicType().serialize(__writer, __args);
     let __argsBuffer = __writer.getBuffer();
     this.connection.callReducer("submit_word", __argsBuffer, this.setCallReducerFlags.submitWordFlags);
   }
 
-  onSubmitWord(callback: (ctx: ReducerEventContext, word: string) => void) {
+  onSubmitWord(callback: (ctx: ReducerEventContext, gameId: number, word: string) => void) {
     this.connection.onReducer("submit_word", callback);
   }
 
-  removeOnSubmitWord(callback: (ctx: ReducerEventContext, word: string) => void) {
+  removeOnSubmitWord(callback: (ctx: ReducerEventContext, gameId: number, word: string) => void) {
     this.connection.offReducer("submit_word", callback);
   }
 
@@ -326,35 +343,35 @@ export class RemoteReducers {
     this.connection.offReducer("turn_timeout", callback);
   }
 
-  updateCurrentWord(word: string) {
-    const __args = { word };
+  updateCurrentWord(gameId: number, word: string) {
+    const __args = { gameId, word };
     let __writer = new BinaryWriter(1024);
     UpdateCurrentWord.getTypeScriptAlgebraicType().serialize(__writer, __args);
     let __argsBuffer = __writer.getBuffer();
     this.connection.callReducer("update_current_word", __argsBuffer, this.setCallReducerFlags.updateCurrentWordFlags);
   }
 
-  onUpdateCurrentWord(callback: (ctx: ReducerEventContext, word: string) => void) {
+  onUpdateCurrentWord(callback: (ctx: ReducerEventContext, gameId: number, word: string) => void) {
     this.connection.onReducer("update_current_word", callback);
   }
 
-  removeOnUpdateCurrentWord(callback: (ctx: ReducerEventContext, word: string) => void) {
+  removeOnUpdateCurrentWord(callback: (ctx: ReducerEventContext, gameId: number, word: string) => void) {
     this.connection.offReducer("update_current_word", callback);
   }
 
-  updateTurnTimeout(seconds: number) {
-    const __args = { seconds };
+  updateTurnTimeout(gameId: number, seconds: number) {
+    const __args = { gameId, seconds };
     let __writer = new BinaryWriter(1024);
     UpdateTurnTimeout.getTypeScriptAlgebraicType().serialize(__writer, __args);
     let __argsBuffer = __writer.getBuffer();
     this.connection.callReducer("update_turn_timeout", __argsBuffer, this.setCallReducerFlags.updateTurnTimeoutFlags);
   }
 
-  onUpdateTurnTimeout(callback: (ctx: ReducerEventContext, seconds: number) => void) {
+  onUpdateTurnTimeout(callback: (ctx: ReducerEventContext, gameId: number, seconds: number) => void) {
     this.connection.onReducer("update_turn_timeout", callback);
   }
 
-  removeOnUpdateTurnTimeout(callback: (ctx: ReducerEventContext, seconds: number) => void) {
+  removeOnUpdateTurnTimeout(callback: (ctx: ReducerEventContext, gameId: number, seconds: number) => void) {
     this.connection.offReducer("update_turn_timeout", callback);
   }
 
@@ -417,6 +434,10 @@ export class RemoteTables {
 
   get gameCountdownSchedule(): GameCountdownScheduleTableHandle {
     return new GameCountdownScheduleTableHandle(this.connection.clientCache.getOrCreateTable<GameCountdownSchedule>(REMOTE_MODULE.tables.game_countdown_schedule));
+  }
+
+  get gameState(): GameStateTableHandle {
+    return new GameStateTableHandle(this.connection.clientCache.getOrCreateTable<GameStateTable>(REMOTE_MODULE.tables.game_state));
   }
 
   get playerInfo(): PlayerInfoTableHandle {

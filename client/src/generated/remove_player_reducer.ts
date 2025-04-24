@@ -32,6 +32,7 @@ import {
 } from "@clockworklabs/spacetimedb-sdk";
 
 export type RemovePlayer = {
+  gameId: number,
   playerIdentity: Identity,
 };
 
@@ -45,6 +46,7 @@ export namespace RemovePlayer {
   */
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
+      new ProductTypeElement("gameId", AlgebraicType.createU32Type()),
       new ProductTypeElement("playerIdentity", AlgebraicType.createIdentityType()),
     ]);
   }

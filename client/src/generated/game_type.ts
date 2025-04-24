@@ -30,11 +30,9 @@ import {
   Timestamp,
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
-import { GameState as __GameState } from "./game_state_type";
-
 export type Game = {
   id: number,
-  state: __GameState,
+  name: string,
   createdAt: Timestamp,
   updatedAt: Timestamp,
 };
@@ -50,7 +48,7 @@ export namespace Game {
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
       new ProductTypeElement("id", AlgebraicType.createU32Type()),
-      new ProductTypeElement("state", __GameState.getTypeScriptAlgebraicType()),
+      new ProductTypeElement("name", AlgebraicType.createStringType()),
       new ProductTypeElement("createdAt", AlgebraicType.createTimestampType()),
       new ProductTypeElement("updatedAt", AlgebraicType.createTimestampType()),
     ]);

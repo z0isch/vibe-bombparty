@@ -110,13 +110,22 @@ pub enum GameStateEvent {
     FreeLetterAward(FreeLetterAwardEvent),
 }
 
+#[spacetimedb::table(name = game_state, public)]
+#[derive(Clone)]
+pub struct GameStateTable {
+    #[primary_key]
+    pub game_id: u32, // Foreign key to Game table
+    pub state: GameState,
+    pub updated_at: Timestamp,
+}
+
 #[spacetimedb::table(name = game, public)]
 #[derive(Clone)]
 pub struct Game {
     #[primary_key]
     #[auto_inc]
     pub id: u32, // Always 1 since we only have one game
-    pub state: GameState,
+    pub name: String,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
 }
@@ -127,24 +136,26 @@ struct TurnTimeoutSchedule {
     #[auto_inc]
     scheduled_id: u64,
     scheduled_at: ScheduleAt,
-    turn_number: u32, // Track which turn this timeout is for
+    turn_number: u32,
+    game_id: u32,
 }
 
 // Helper function to schedule a turn timeout
-fn schedule_turn_timeout(ctx: &ReducerContext, state: &PlayingState) {
+fn schedule_turn_timeout(ctx: &ReducerContext, state: &PlayingState, game_id: u32) {
     let timeout_micros = (state.settings.turn_timeout_seconds as i64) * 1_000_000;
     let timeout = TurnTimeoutSchedule {
         scheduled_id: 0, // Auto-incremented
         scheduled_at: (ctx.timestamp + TimeDuration::from_micros(timeout_micros)).into(),
         turn_number: state.turn_number,
+        game_id,
     };
     ctx.db.turn_timeout_schedule().insert(timeout);
 }
 
 #[spacetimedb::reducer]
 fn turn_timeout(ctx: &ReducerContext, arg: TurnTimeoutSchedule) -> Result<(), String> {
-    if let Some(mut game) = get_game(ctx) {
-        match &mut game.state {
+    if let Some(game_state) = get_game_state(ctx, arg.game_id) {
+        match &game_state.state {
             GameState::Settings(_) => {
                 Err("Cannot process turn timeout in settings state".to_string())
             }
@@ -155,7 +166,7 @@ fn turn_timeout(ctx: &ReducerContext, arg: TurnTimeoutSchedule) -> Result<(), St
                 // Only advance the turn if the timeout matches the current turn number
                 // This prevents stale timeouts from affecting newer turns
                 if playing_state.turn_number == arg.turn_number {
-                    make_move(&mut game, Move::TimeUp, ctx.sender, ctx)?;
+                    make_move(arg.game_id, Move::TimeUp, ctx.sender, ctx)?;
                 }
                 Ok(())
             }
@@ -172,23 +183,25 @@ pub struct GameCountdownSchedule {
     scheduled_id: u64,
     pub scheduled_at: ScheduleAt,
     pub countdown_seconds: u32,
+    pub game_id: u32,
 }
 
 // Helper function to schedule game start countdown
-fn schedule_game_start(ctx: &ReducerContext, countdown_seconds: u32) {
+fn schedule_game_start(ctx: &ReducerContext, countdown_seconds: u32, game_id: u32) {
     let timeout_micros = (countdown_seconds as i64) * 1_000_000;
     let countdown = GameCountdownSchedule {
         scheduled_id: 0, // Auto-incremented
         countdown_seconds,
+        game_id,
         scheduled_at: (ctx.timestamp + TimeDuration::from_micros(timeout_micros)).into(),
     };
     ctx.db.game_countdown_schedule().insert(countdown);
 }
 
 #[spacetimedb::reducer]
-pub fn game_countdown(ctx: &ReducerContext, _arg: GameCountdownSchedule) -> Result<(), String> {
-    if let Some(mut game) = get_game(ctx) {
-        match &game.state {
+pub fn game_countdown(ctx: &ReducerContext, arg: GameCountdownSchedule) -> Result<(), String> {
+    if let Some(game_state) = get_game_state(ctx, arg.game_id) {
+        match &game_state.state {
             GameState::Countdown(countdown_state) => {
                 // Clone the settings first so we don't have multiple borrows
                 let settings_clone = countdown_state.settings.clone();
@@ -236,11 +249,17 @@ pub fn game_countdown(ctx: &ReducerContext, _arg: GameCountdownSchedule) -> Resu
                 }
 
                 // Schedule the first turn timeout
-                schedule_turn_timeout(ctx, &playing_state);
+                schedule_turn_timeout(ctx, &playing_state, arg.game_id);
+
+                // Create new game state with playing state
+                let new_game_state = GameStateTable {
+                    game_id: arg.game_id,
+                    state: GameState::Playing(playing_state),
+                    updated_at: ctx.timestamp,
+                };
 
                 // Update game state
-                game.state = GameState::Playing(playing_state);
-                update_game(ctx, game);
+                update_game_state(ctx, new_game_state);
 
                 Ok(())
             }
@@ -280,7 +299,7 @@ fn is_game_over(state: &PlayingState) -> bool {
 }
 
 // Helper function to handle end of turn logic
-fn end_turn(state: &mut PlayingState, ctx: &ReducerContext) {
+fn end_turn(state: &mut PlayingState, ctx: &ReducerContext, game_id: u32) {
     // Clear current word and advance to next player
     let current_player = &mut state.players[state.current_turn_index as usize];
     current_player.current_word = String::new();
@@ -297,7 +316,7 @@ fn end_turn(state: &mut PlayingState, ctx: &ReducerContext) {
         state.turn_number += 1;
 
         // Schedule timeout for the next player's turn
-        schedule_turn_timeout(ctx, state);
+        schedule_turn_timeout(ctx, state, game_id);
     } else {
         // Store example for the final trigram before game ends
         let final_trigram = state.current_trigram.clone();
@@ -360,13 +379,22 @@ fn is_word_valid(word: &str, trigram: &str, used_words: &[String]) -> Result<(),
     }
 }
 
+// Helper function to update the game state
+fn update_game_state(ctx: &ReducerContext, state: GameStateTable) {
+    let mut updated_state = state;
+    updated_state.updated_at = ctx.timestamp;
+    ctx.db.game_state().game_id().update(updated_state);
+}
+
 fn make_move(
-    game: &mut Game,
+    game_id: u32,
     game_move: Move,
     player_identity: Identity,
     ctx: &ReducerContext,
 ) -> Result<(), String> {
-    match &mut game.state {
+    let mut game_state = get_game_state(ctx, game_id).unwrap();
+
+    match &mut game_state.state {
         GameState::Settings(_) => {
             return Err("Cannot make moves while in settings state".to_string());
         }
@@ -429,7 +457,7 @@ fn make_move(
                         state.failed_players.clear();
                     }
 
-                    end_turn(state, ctx);
+                    end_turn(state, ctx, game_id);
 
                     // If game isn't over, emit MyTurn event to the next player
                     if !is_game_over(state) {
@@ -541,7 +569,7 @@ fn make_move(
                             pick_random_trigram_and_update(state, ctx)?;
                             state.failed_players.clear();
 
-                            end_turn(state, ctx);
+                            end_turn(state, ctx, game_id);
 
                             // If game isn't over, emit MyTurn event to the next player
                             if !is_game_over(state) {
@@ -579,13 +607,13 @@ fn make_move(
         }
     }
 
-    update_game(ctx, game.clone());
+    update_game_state(ctx, game_state);
     Ok(())
 }
 
-// Helper function to get the game
-fn get_game(ctx: &ReducerContext) -> Option<Game> {
-    ctx.db.game().id().find(&1)
+// Helper function to get the game state
+fn get_game_state(ctx: &ReducerContext, game_id: u32) -> Option<GameStateTable> {
+    ctx.db.game_state().game_id().find(&game_id)
 }
 
 // Helper function to store a trigram example
@@ -633,10 +661,36 @@ fn pick_random_trigram_and_update(
     Ok(())
 }
 
-// Helper function to update the game
-fn update_game(ctx: &ReducerContext, mut game: Game) {
-    game.updated_at = ctx.timestamp;
-    ctx.db.game().id().update(game);
+// Helper function to get random long words containing a trigram
+fn get_example_words(trigram: &str, ctx: &ReducerContext) -> Vec<String> {
+    if let Some(words) = TRIGRAM_MAP.get(&trigram.to_uppercase()) {
+        // Filter for words longer than 10 characters
+        let long_words: Vec<String> = words.iter().filter(|w| w.len() > 10).cloned().collect();
+
+        if long_words.is_empty() {
+            return Vec::new();
+        }
+
+        // Get up to 3 random words
+        let mut rng = ctx.rng();
+        let mut selected_words = Vec::new();
+        let mut indices: Vec<usize> = (0..long_words.len()).collect();
+
+        // Shuffle indices
+        for i in (1..indices.len()).rev() {
+            let j = rng.next_u32() as usize % (i + 1);
+            indices.swap(i, j);
+        }
+
+        // Take up to 3 words
+        for &idx in indices.iter().take(3) {
+            selected_words.push(long_words[idx].to_uppercase());
+        }
+
+        selected_words
+    } else {
+        Vec::new()
+    }
 }
 
 // Initialize the game when the module is first published
@@ -644,27 +698,34 @@ fn update_game(ctx: &ReducerContext, mut game: Game) {
 pub fn init(ctx: &ReducerContext) {
     let game = Game {
         id: 1,
-        state: GameState::Settings(SettingsState {
-            turn_timeout_seconds: 5, // Default 5 seconds timeout
-            players: Vec::new(),
-        }),
+        name: "Bombparty".to_string(),
         created_at: ctx.timestamp,
         updated_at: ctx.timestamp,
     };
     ctx.db.game().insert(game);
+
+    let game_state = GameStateTable {
+        game_id: 1,
+        state: GameState::Settings(SettingsState {
+            turn_timeout_seconds: 5, // Default 5 seconds timeout
+            players: Vec::new(),
+        }),
+        updated_at: ctx.timestamp,
+    };
+    ctx.db.game_state().insert(game_state);
 }
 
 #[spacetimedb::reducer]
-pub fn update_turn_timeout(ctx: &ReducerContext, seconds: u32) -> Result<(), String> {
+pub fn update_turn_timeout(ctx: &ReducerContext, game_id: u32, seconds: u32) -> Result<(), String> {
     if seconds == 0 {
         return Err("Turn timeout must be greater than 0 seconds".to_string());
     }
 
-    if let Some(mut game) = get_game(ctx) {
-        match &mut game.state {
+    if let Some(mut game_state) = get_game_state(ctx, game_id) {
+        match &mut game_state.state {
             GameState::Settings(settings) => {
                 settings.turn_timeout_seconds = seconds;
-                update_game(ctx, game);
+                update_game_state(ctx, game_state);
                 Ok(())
             }
             GameState::Countdown(_) => {
@@ -692,7 +753,7 @@ fn create_initial_player_game_data(player_identity: Identity) -> PlayerGameData 
 }
 
 #[spacetimedb::reducer]
-pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), String> {
+pub fn register_player(ctx: &ReducerContext, game_id: u32, username: String) -> Result<(), String> {
     let player = create_initial_player_game_data(ctx.sender);
 
     // Check if player info already exists
@@ -709,13 +770,13 @@ pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), Str
             username,
             is_online: true,
             last_active: ctx.timestamp,
-            wins: 0, // Initialize wins to 0 for new players
+            wins: 0,
         };
         ctx.db.player_info().insert(player_info);
     }
 
-    if let Some(mut game) = get_game(ctx) {
-        match &mut game.state {
+    if let Some(mut game_state) = get_game_state(ctx, game_id) {
+        match &mut game_state.state {
             GameState::Settings(settings) => {
                 // Check if player already exists
                 if settings
@@ -727,7 +788,7 @@ pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), Str
                 }
 
                 settings.players.push(player);
-                update_game(ctx, game);
+                update_game_state(ctx, game_state);
                 Ok(())
             }
             GameState::Countdown(_) => Err("Cannot register during countdown".to_string()),
@@ -739,9 +800,13 @@ pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), Str
 }
 
 #[spacetimedb::reducer]
-pub fn remove_player(ctx: &ReducerContext, player_identity: Identity) -> Result<(), String> {
-    if let Some(mut game) = get_game(ctx) {
-        match &mut game.state {
+pub fn remove_player(
+    ctx: &ReducerContext,
+    game_id: u32,
+    player_identity: Identity,
+) -> Result<(), String> {
+    if let Some(mut game_state) = get_game_state(ctx, game_id) {
+        match &mut game_state.state {
             GameState::Settings(settings) => {
                 // Remove player from settings state
                 if let Some(index) = settings
@@ -750,7 +815,7 @@ pub fn remove_player(ctx: &ReducerContext, player_identity: Identity) -> Result<
                     .position(|p| p.player_identity == player_identity)
                 {
                     settings.players.remove(index);
-                    update_game(ctx, game);
+                    update_game_state(ctx, game_state);
                     Ok(())
                 } else {
                     Err("Player not found".to_string())
@@ -767,9 +832,9 @@ pub fn remove_player(ctx: &ReducerContext, player_identity: Identity) -> Result<
 }
 
 #[spacetimedb::reducer]
-pub fn start_game(ctx: &ReducerContext) -> Result<(), String> {
-    if let Some(mut game) = get_game(ctx) {
-        match &game.state {
+pub fn start_game(ctx: &ReducerContext, game_id: u32) -> Result<(), String> {
+    if let Some(mut game_state) = get_game_state(ctx, game_id) {
+        match &game_state.state {
             GameState::Settings(settings) => {
                 if settings.players.is_empty() {
                     return Err("Cannot start game with no players".to_string());
@@ -782,11 +847,11 @@ pub fn start_game(ctx: &ReducerContext) -> Result<(), String> {
                 };
 
                 // Schedule the countdown
-                schedule_game_start(ctx, 5);
+                schedule_game_start(ctx, 5, game_id);
 
                 // Update game state to countdown
-                game.state = GameState::Countdown(countdown_state);
-                update_game(ctx, game);
+                game_state.state = GameState::Countdown(countdown_state);
+                update_game_state(ctx, game_state);
 
                 Ok(())
             }
@@ -818,9 +883,9 @@ pub fn identity_disconnected(ctx: &ReducerContext) {
 }
 
 #[spacetimedb::reducer]
-pub fn update_current_word(ctx: &ReducerContext, word: String) -> Result<(), String> {
-    if let Some(mut game) = get_game(ctx) {
-        match &mut game.state {
+pub fn update_current_word(ctx: &ReducerContext, game_id: u32, word: String) -> Result<(), String> {
+    if let Some(mut game_state) = get_game_state(ctx, game_id) {
+        match &mut game_state.state {
             GameState::Settings(_) => Err("Game not in playing state".to_string()),
             GameState::Countdown(_) => Err("Cannot update word during countdown".to_string()),
             GameState::Playing(playing_state) => {
@@ -840,7 +905,7 @@ pub fn update_current_word(ctx: &ReducerContext, word: String) -> Result<(), Str
 
                     // Update the player's current word
                     playing_state.players[player_index].current_word = word;
-                    update_game(ctx, game);
+                    update_game_state(ctx, game_state);
                     Ok(())
                 } else {
                     Err("Player not found".to_string())
@@ -853,9 +918,9 @@ pub fn update_current_word(ctx: &ReducerContext, word: String) -> Result<(), Str
 }
 
 #[spacetimedb::reducer]
-pub fn submit_word(ctx: &ReducerContext, word: String) -> Result<(), String> {
-    if let Some(mut game) = get_game(ctx) {
-        match &mut game.state {
+pub fn submit_word(ctx: &ReducerContext, game_id: u32, word: String) -> Result<(), String> {
+    if let Some(game_state) = get_game_state(ctx, game_id) {
+        match &game_state.state {
             GameState::Settings(_) => Err("Game not in playing state".to_string()),
             GameState::Countdown(_) => Err("Cannot submit word during countdown".to_string()),
             GameState::Playing(playing_state) => {
@@ -867,7 +932,7 @@ pub fn submit_word(ctx: &ReducerContext, word: String) -> Result<(), String> {
                 }
 
                 make_move(
-                    &mut game,
+                    game_id,
                     Move::GuessWord(GuessWordMove { word }),
                     ctx.sender,
                     ctx,
@@ -880,9 +945,9 @@ pub fn submit_word(ctx: &ReducerContext, word: String) -> Result<(), String> {
 }
 
 #[spacetimedb::reducer]
-pub fn restart_game(ctx: &ReducerContext) -> Result<(), String> {
-    if let Some(mut game) = get_game(ctx) {
-        match &game.state {
+pub fn restart_game(ctx: &ReducerContext, game_id: u32) -> Result<(), String> {
+    if let Some(game_state) = get_game_state(ctx, game_id) {
+        match &game_state.state {
             GameState::Playing(playing_state) => {
                 // Reset all players' lives and words
                 let reset_players: Vec<PlayerGameData> = playing_state
@@ -891,12 +956,17 @@ pub fn restart_game(ctx: &ReducerContext) -> Result<(), String> {
                     .map(|p| create_initial_player_game_data(p.player_identity))
                     .collect();
 
-                // Transition back to settings state
-                game.state = GameState::Settings(SettingsState {
-                    turn_timeout_seconds: playing_state.settings.turn_timeout_seconds,
-                    players: reset_players,
-                });
-                update_game(ctx, game);
+                // Create new game state with settings state
+                let new_game_state = GameStateTable {
+                    game_id,
+                    state: GameState::Settings(SettingsState {
+                        turn_timeout_seconds: playing_state.settings.turn_timeout_seconds,
+                        players: reset_players,
+                    }),
+                    updated_at: ctx.timestamp,
+                };
+
+                update_game_state(ctx, new_game_state);
                 Ok(())
             }
             GameState::Settings(_) => {
@@ -907,37 +977,5 @@ pub fn restart_game(ctx: &ReducerContext) -> Result<(), String> {
         }
     } else {
         Err("Game not initialized".to_string())
-    }
-}
-
-// Helper function to get random long words containing a trigram
-fn get_example_words(trigram: &str, ctx: &ReducerContext) -> Vec<String> {
-    if let Some(words) = TRIGRAM_MAP.get(&trigram.to_uppercase()) {
-        // Filter for words longer than 10 characters
-        let long_words: Vec<String> = words.iter().filter(|w| w.len() > 10).cloned().collect();
-
-        if long_words.is_empty() {
-            return Vec::new();
-        }
-
-        // Get up to 3 random words
-        let mut rng = ctx.rng();
-        let mut selected_words = Vec::new();
-        let mut indices: Vec<usize> = (0..long_words.len()).collect();
-
-        // Shuffle indices
-        for i in (1..indices.len()).rev() {
-            let j = rng.next_u32() as usize % (i + 1);
-            indices.swap(i, j);
-        }
-
-        // Take up to 3 words
-        for &idx in indices.iter().take(3) {
-            selected_words.push(long_words[idx].to_uppercase());
-        }
-
-        selected_words
-    } else {
-        Vec::new()
     }
 }

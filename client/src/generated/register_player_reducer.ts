@@ -32,6 +32,7 @@ import {
 } from "@clockworklabs/spacetimedb-sdk";
 
 export type RegisterPlayer = {
+  gameId: number,
   username: string,
 };
 
@@ -45,6 +46,7 @@ export namespace RegisterPlayer {
   */
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
+      new ProductTypeElement("gameId", AlgebraicType.createU32Type()),
       new ProductTypeElement("username", AlgebraicType.createStringType()),
     ]);
   }

@@ -5,6 +5,7 @@ import { PlayerGameData } from '../generated/player_game_data_type';
 import { PlayerInfoTable } from '../generated/player_info_table_type';
 
 interface SettingsProps {
+  gameId: number;
   turnTimeoutSeconds: number;
   players: PlayerGameData[];
   playerInfos: PlayerInfoTable[];
@@ -14,6 +15,7 @@ interface SettingsProps {
 }
 
 export function Settings({
+  gameId,
   turnTimeoutSeconds,
   players,
   playerInfos,
@@ -31,7 +33,7 @@ export function Settings({
   const handleStartGame = async () => {
     if (!conn) return;
     try {
-      await conn.reducers.startGame();
+      await conn.reducers.startGame(gameId);
     } catch (error) {
       // Silently handle errors
     }
@@ -53,7 +55,7 @@ export function Settings({
               onChange={(e) => {
                 const newTimeout = parseInt(e.target.value) || 1;
                 setTurnTimeout(newTimeout);
-                conn?.reducers.updateTurnTimeout(newTimeout);
+                conn?.reducers.updateTurnTimeout(gameId, newTimeout);
               }}
               className="bg-gray-700 text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 w-32"
             />
@@ -87,7 +89,7 @@ export function Settings({
                 <button
                   onClick={async () => {
                     try {
-                      await conn.reducers.removePlayer(player.playerIdentity);
+                      await conn.reducers.removePlayer(gameId, player.playerIdentity);
                     } catch (error) {
                       // Silently handle errors
                     }

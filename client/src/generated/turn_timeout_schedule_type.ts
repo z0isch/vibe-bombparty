@@ -34,6 +34,7 @@ export type TurnTimeoutSchedule = {
   scheduledId: bigint,
   scheduledAt: { tag: "Interval", value: TimeDuration } | { tag: "Time", value: Timestamp },
   turnNumber: number,
+  gameId: number,
 };
 
 /**
@@ -49,6 +50,7 @@ export namespace TurnTimeoutSchedule {
       new ProductTypeElement("scheduledId", AlgebraicType.createU64Type()),
       new ProductTypeElement("scheduledAt", AlgebraicType.createScheduleAtType()),
       new ProductTypeElement("turnNumber", AlgebraicType.createU32Type()),
+      new ProductTypeElement("gameId", AlgebraicType.createU32Type()),
     ]);
   }
 

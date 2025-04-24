@@ -32,6 +32,7 @@ import {
 } from "@clockworklabs/spacetimedb-sdk";
 
 export type UpdateTurnTimeout = {
+  gameId: number,
   seconds: number,
 };
 
@@ -45,6 +46,7 @@ export namespace UpdateTurnTimeout {
   */
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
+      new ProductTypeElement("gameId", AlgebraicType.createU32Type()),
       new ProductTypeElement("seconds", AlgebraicType.createU32Type()),
     ]);
   }

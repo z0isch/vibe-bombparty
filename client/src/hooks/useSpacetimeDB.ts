@@ -4,13 +4,14 @@ import { useEffect, useState } from 'react';
 
 import { eventQueue } from '../eventQueue';
 import * as moduleBindings from '../generated';
-import { Game } from '../generated/game_type';
+import { GameStateTable } from '../generated/game_state_table_type';
+import { GameState } from '../generated/game_state_type';
 import { PlayerGameData } from '../generated/player_game_data_type';
 import { PlayerInfoTable } from '../generated/player_info_table_type';
 import { setupSoundEffects } from '../soundEffects';
 
 export interface SpacetimeDBState {
-  game: Game | null;
+  gameStateTable: GameStateTable | null;
   connectionIdentity: string | null;
   isSubscribed: boolean;
   currentPlayer: PlayerGameData | null;
@@ -25,7 +26,7 @@ export interface SpacetimeDBActions {
 
 export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
   const [conn, setConn] = useState<moduleBindings.DbConnection | null>(null);
-  const [game, setGame] = useState<Game | null>(null);
+  const [gameStateTable, setGameStateTable] = useState<GameStateTable | null>(null);
   const [playerInfos, setPlayerInfos] = useState<PlayerInfoTable[]>([]);
   const [connectionIdentity, setConnectionIdentity] = useState<string | null>(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
@@ -42,22 +43,31 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
     return cleanupSoundEffects;
   }, [conn?.identity]);
 
-  // Helper function to get current player from game
+  // Helper function to get current player from game state
   const getCurrentPlayer = () => {
-    if (!connectionIdentity || !game) return null;
-    switch (game.state.tag) {
+    if (!connectionIdentity || !gameStateTable?.state) return null;
+    switch (gameStateTable.state.tag) {
       case 'Countdown':
         return (
-          game.state.value.settings.players.find(
+          gameStateTable.state.value.settings.players.find(
+            (p) => p.playerIdentity.toHexString() === connectionIdentity
+          ) || null
+        );
+      case 'Playing':
+        return (
+          gameStateTable.state.value.players.find(
+            (p) => p.playerIdentity.toHexString() === connectionIdentity
+          ) || null
+        );
+      case 'Settings':
+        return (
+          gameStateTable.state.value.players.find(
             (p) => p.playerIdentity.toHexString() === connectionIdentity
           ) || null
         );
       default:
+        return null;
     }
-    return (
-      game.state.value.players.find((p) => p.playerIdentity.toHexString() === connectionIdentity) ||
-      null
-    );
   };
 
   // Set up subscription and callbacks
@@ -74,25 +84,25 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
         console.error('Subscription error:', error);
         setIsSubscribed(false);
       })
-      .subscribe(['SELECT * FROM game', 'SELECT * FROM player_info']);
+      .subscribe(['SELECT * FROM game_state', 'SELECT * FROM player_info']);
 
     // Register callbacks
-    conn.db.game.onInsert((ctx, gameData) => {
-      setGame(gameData);
-      if (gameData.state.tag === 'Playing') {
-        eventQueue.publishEvents(gameData.state.value.playerEvents);
+    conn.db.gameState.onInsert((ctx, gameStateData) => {
+      setGameStateTable(gameStateData);
+      if (gameStateData.state.tag === 'Playing') {
+        eventQueue.publishEvents(gameStateData.state.value.playerEvents);
       }
     });
 
-    conn.db.game.onUpdate((ctx, oldGameData, newGameData) => {
-      setGame(newGameData);
-      if (newGameData.state.tag === 'Playing') {
-        eventQueue.publishEvents(newGameData.state.value.playerEvents);
+    conn.db.gameState.onUpdate((ctx, oldGameStateData, newGameStateData) => {
+      setGameStateTable(newGameStateData);
+      if (newGameStateData.state.tag === 'Playing') {
+        eventQueue.publishEvents(newGameStateData.state.value.playerEvents);
       }
     });
 
-    conn.db.game.onDelete(() => {
-      setGame(null);
+    conn.db.gameState.onDelete(() => {
+      setGameStateTable(null);
     });
 
     // Register player info callbacks
@@ -136,7 +146,7 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
           .onDisconnect(() => {
             setConnectionIdentity(null);
             setIsSubscribed(false);
-            setGame(null);
+            setGameStateTable(null);
             setIsConnected(false);
           })
           .build();
@@ -157,12 +167,13 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
 
   const registerPlayer = async (username: string) => {
     if (!conn) throw new Error('Not connected to SpacetimeDB');
-    await conn.reducers.registerPlayer(username);
+    if (!gameStateTable) throw new Error('Game state not initialized');
+    await conn.reducers.registerPlayer(gameStateTable.gameId, username);
   };
 
   return [
     {
-      game,
+      gameStateTable,
       connectionIdentity,
       isSubscribed,
       currentPlayer: getCurrentPlayer(),

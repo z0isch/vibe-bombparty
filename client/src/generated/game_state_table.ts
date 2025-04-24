@@ -30,23 +30,25 @@ import {
   Timestamp,
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
-import { Game } from "./game_type";
+import { GameStateTable } from "./game_state_table_type";
+import { GameState as __GameState } from "./game_state_type";
+
 import { EventContext, Reducer, RemoteReducers, RemoteTables } from ".";
 
 /**
- * Table handle for the table `game`.
+ * Table handle for the table `game_state`.
  *
- * Obtain a handle from the [`game`] property on [`RemoteTables`],
- * like `ctx.db.game`.
+ * Obtain a handle from the [`gameState`] property on [`RemoteTables`],
+ * like `ctx.db.gameState`.
  *
  * Users are encouraged not to explicitly reference this type,
  * but to directly chain method calls,
- * like `ctx.db.game.on_insert(...)`.
+ * like `ctx.db.gameState.on_insert(...)`.
  */
-export class GameTableHandle {
-  tableCache: TableCache<Game>;
+export class GameStateTableHandle {
+  tableCache: TableCache<GameStateTable>;
 
-  constructor(tableCache: TableCache<Game>) {
+  constructor(tableCache: TableCache<GameStateTable>) {
     this.tableCache = tableCache;
   }
 
@@ -54,53 +56,53 @@ export class GameTableHandle {
     return this.tableCache.count();
   }
 
-  iter(): Iterable<Game> {
+  iter(): Iterable<GameStateTable> {
     return this.tableCache.iter();
   }
   /**
-   * Access to the `id` unique index on the table `game`,
+   * Access to the `game_id` unique index on the table `game_state`,
    * which allows point queries on the field of the same name
-   * via the [`GameIdUnique.find`] method.
+   * via the [`GameStateGameIdUnique.find`] method.
    *
    * Users are encouraged not to explicitly reference this type,
    * but to directly chain method calls,
-   * like `ctx.db.game.id().find(...)`.
+   * like `ctx.db.gameState.game_id().find(...)`.
    *
-   * Get a handle on the `id` unique index on the table `game`.
+   * Get a handle on the `game_id` unique index on the table `game_state`.
    */
-  id = {
-    // Find the subscribed row whose `id` column value is equal to `col_val`,
+  game_id = {
+    // Find the subscribed row whose `game_id` column value is equal to `col_val`,
     // if such a row is present in the client cache.
-    find: (col_val: number): Game | undefined => {
+    find: (col_val: number): GameStateTable | undefined => {
       for (let row of this.tableCache.iter()) {
-        if (deepEqual(row.id, col_val)) {
+        if (deepEqual(row.game_id, col_val)) {
           return row;
         }
       }
     },
   };
 
-  onInsert = (cb: (ctx: EventContext, row: Game) => void) => {
+  onInsert = (cb: (ctx: EventContext, row: GameStateTable) => void) => {
     return this.tableCache.onInsert(cb);
   }
 
-  removeOnInsert = (cb: (ctx: EventContext, row: Game) => void) => {
+  removeOnInsert = (cb: (ctx: EventContext, row: GameStateTable) => void) => {
     return this.tableCache.removeOnInsert(cb);
   }
 
-  onDelete = (cb: (ctx: EventContext, row: Game) => void) => {
+  onDelete = (cb: (ctx: EventContext, row: GameStateTable) => void) => {
     return this.tableCache.onDelete(cb);
   }
 
-  removeOnDelete = (cb: (ctx: EventContext, row: Game) => void) => {
+  removeOnDelete = (cb: (ctx: EventContext, row: GameStateTable) => void) => {
     return this.tableCache.removeOnDelete(cb);
   }
 
   // Updates are only defined for tables with primary keys.
-  onUpdate = (cb: (ctx: EventContext, oldRow: Game, newRow: Game) => void) => {
+  onUpdate = (cb: (ctx: EventContext, oldRow: GameStateTable, newRow: GameStateTable) => void) => {
     return this.tableCache.onUpdate(cb);
   }
 
-  removeOnUpdate = (cb: (ctx: EventContext, onRow: Game, newRow: Game) => void) => {
+  removeOnUpdate = (cb: (ctx: EventContext, onRow: GameStateTable, newRow: GameStateTable) => void) => {
     return this.tableCache.removeOnUpdate(cb);
   }}

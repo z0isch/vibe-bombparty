@@ -31,7 +31,9 @@ import {
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
 
-export type RestartGame = {};
+export type RestartGame = {
+  gameId: number,
+};
 
 /**
  * A namespace for generated helper functions.
@@ -43,6 +45,7 @@ export namespace RestartGame {
   */
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
+      new ProductTypeElement("gameId", AlgebraicType.createU32Type()),
     ]);
   }
 

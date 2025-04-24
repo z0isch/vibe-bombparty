@@ -1,38 +1,38 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { DbConnection } from '../generated';
+import { GameStateTable } from '../generated/game_state_table_type';
+import { PlayerGameData } from '../generated/player_game_data_type';
 import { PlayerInfoTable } from '../generated/player_info_table_type';
 import { PlayingState } from '../generated/playing_state_type';
 import { CircularCountdown } from './CircularCountdown';
 import { ExampleTrigrams } from './ExampleTrigrams';
 import { Player } from './Player';
 
-interface PlayingProps {
+export interface PlayingProps {
   playingState: PlayingState;
   playerInfos: PlayerInfoTable[];
   connectionIdentity: string;
   conn: DbConnection;
+  gameId: number;
 }
 
-export function Playing({ playingState, playerInfos, connectionIdentity, conn }: PlayingProps) {
+export function Playing({
+  playingState,
+  playerInfos,
+  connectionIdentity,
+  conn,
+  gameId,
+}: PlayingProps) {
   const [timeLeft, setTimeLeft] = useState(playingState.settings.turnTimeoutSeconds);
   const timerRef = useRef<number>();
 
-  const handleUpdateWord = async (word: string) => {
-    if (!conn) return;
-    try {
-      await conn.reducers.updateCurrentWord(word);
-    } catch (error) {
-      // Silently handle errors
-    }
+  const handleUpdateWord = (word: string) => {
+    conn.reducers.updateCurrentWord(gameId, word);
   };
 
-  const handleRestartGame = async () => {
-    try {
-      await conn.reducers.restartGame();
-    } catch (error) {
-      // Silently handle errors
-    }
+  const handleRestartGame = () => {
+    conn.reducers.restartGame(gameId);
   };
 
   // Start/reset timer when turn changes
@@ -188,12 +188,13 @@ export function Playing({ playingState, playerInfos, connectionIdentity, conn }:
                     return (
                       <Player
                         key={player.playerIdentity.toHexString()}
+                        gameId={gameId}
                         player={player}
                         playerInfo={playerInfo}
                         isCurrentPlayer={isCurrentPlayer}
                         isTheirTurn={isTheirTurn && !isGameOver}
-                        onUpdateWord={handleUpdateWord}
                         conn={conn}
+                        onUpdateWord={handleUpdateWord}
                         currentTrigram={playingState.currentTrigram}
                       />
                     );

@@ -5,7 +5,7 @@ import { useSpacetimeDB } from './hooks/useSpacetimeDB';
 
 function App() {
   const [
-    { game, connectionIdentity, currentPlayer, playerInfos, isConnected, conn },
+    { gameStateTable, connectionIdentity, currentPlayer, playerInfos, isConnected, conn },
     { registerPlayer },
   ] = useSpacetimeDB();
 
@@ -23,14 +23,15 @@ function App() {
   };
 
   function renderGameState() {
-    if (!game || !conn) return null;
+    if (!gameStateTable?.state || !conn) return null;
 
-    switch (game.state.tag) {
+    switch (gameStateTable.state.tag) {
       case 'Settings':
         return (
           <Settings
-            turnTimeoutSeconds={game.state.value.turnTimeoutSeconds}
-            players={game.state.value.players}
+            gameId={gameStateTable.gameId}
+            turnTimeoutSeconds={gameStateTable.state.value.turnTimeoutSeconds}
+            players={gameStateTable.state.value.players}
             playerInfos={playerInfos}
             conn={conn}
             onJoinGame={handleJoinGame}
@@ -38,12 +39,13 @@ function App() {
           />
         );
       case 'Countdown':
-        return <Countdown countdownState={game.state.value} playerInfos={playerInfos} />;
+        return <Countdown countdownState={gameStateTable.state.value} playerInfos={playerInfos} />;
       case 'Playing':
         if (!connectionIdentity) return null;
         return (
           <Playing
-            playingState={game.state.value}
+            gameId={gameStateTable.gameId}
+            playingState={gameStateTable.state.value}
             playerInfos={playerInfos}
             connectionIdentity={connectionIdentity}
             conn={conn}
@@ -51,7 +53,7 @@ function App() {
         );
       default: {
         // This ensures we handle all possible states
-        const _exhaustiveCheck: never = game.state;
+        const _exhaustiveCheck: never = gameStateTable.state;
         return null;
       }
     }

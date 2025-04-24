@@ -32,6 +32,7 @@ import {
 } from "@clockworklabs/spacetimedb-sdk";
 
 export type UpdateCurrentWord = {
+  gameId: number,
   word: string,
 };
 
@@ -45,6 +46,7 @@ export namespace UpdateCurrentWord {
   */
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
+      new ProductTypeElement("gameId", AlgebraicType.createU32Type()),
       new ProductTypeElement("word", AlgebraicType.createStringType()),
     ]);
   }

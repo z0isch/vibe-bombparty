@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 
 import { DbConnection } from '../generated';
+import { GameStateTable } from '../generated/game_state_table_type';
 import { PlayerGameData } from '../generated/player_game_data_type';
 import { PlayerInfoTable } from '../generated/player_info_table_type';
 import { usePlayerEventMotionProps } from '../hooks/usePlayerEventMotionProps';
@@ -14,6 +15,7 @@ interface PlayerProps {
   isTheirTurn: boolean;
   onUpdateWord: (word: string) => void;
   conn: DbConnection;
+  gameId: number;
   currentTrigram: string;
 }
 
@@ -24,6 +26,7 @@ export function Player({
   isTheirTurn,
   onUpdateWord,
   conn,
+  gameId,
   currentTrigram,
 }: PlayerProps) {
   const [inputWord, setInputWord] = useState(player.currentWord);
@@ -73,8 +76,8 @@ export function Player({
 
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && isTheirTurn && isCurrentPlayer) {
-      await conn.reducers.submitWord(inputWord);
-      setInputWord(''); // Clear the input after submission
+      await conn.reducers.submitWord(gameId, inputWord);
+      setInputWord('');
     }
   };
 
