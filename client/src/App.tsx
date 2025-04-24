@@ -2,10 +2,12 @@ import { Countdown } from './components/Countdown';
 import { Playing } from './components/Playing';
 import { Settings } from './components/Settings';
 import { useGameStateTable } from './hooks/useGameStateTable';
+import { usePlayerInfoTable } from './hooks/usePlayerInfoTable';
 import { useSpacetimeDB } from './hooks/useSpacetimeDB';
 
 function App() {
-  const { connectionIdentity, playerInfos, isConnected, conn } = useSpacetimeDB();
+  const { connectionIdentity, isConnected, conn } = useSpacetimeDB();
+  const playerInfos = usePlayerInfoTable(conn, isConnected);
 
   // For now, we'll hardcode game ID to 1 since that's what the server uses
   const gameId = 1;

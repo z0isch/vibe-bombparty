@@ -1,0 +1,56 @@
+import { useEffect, useState } from 'react';
+
+import * as moduleBindings from '../generated';
+import { PlayerInfoTable } from '../generated/player_info_table_type';
+
+export function usePlayerInfoTable(conn: moduleBindings.DbConnection | null, isConnected: boolean) {
+  const [playerInfos, setPlayerInfos] = useState<PlayerInfoTable[]>([]);
+  const [subscription, setSubscription] = useState<ReturnType<
+    typeof conn.subscriptionBuilder.prototype.subscribe
+  > | null>(null);
+
+  useEffect(() => {
+    if (!conn || !isConnected || subscription !== null) return;
+
+    // Set up subscription
+    const newSubscription = conn
+      .subscriptionBuilder()
+      .onApplied(() => {
+        // Subscription applied successfully
+      })
+      .onError((error) => {
+        console.error('Player info subscription error:', error);
+      })
+      .subscribe(['SELECT * FROM player_info']);
+
+    setSubscription(newSubscription);
+
+    // Register player info callbacks
+    conn.db.playerInfo.onInsert((_ctx, playerInfo) => {
+      setPlayerInfos((prev) => [...prev, playerInfo]);
+    });
+
+    conn.db.playerInfo.onUpdate((_ctx, _oldPlayerInfo, newPlayerInfo) => {
+      setPlayerInfos((prev) =>
+        prev.map((p) =>
+          p.identity.toHexString() === newPlayerInfo.identity.toHexString() ? newPlayerInfo : p
+        )
+      );
+    });
+
+    conn.db.playerInfo.onDelete((_ctx, playerInfo) => {
+      setPlayerInfos((prev) =>
+        prev.filter((p) => p.identity.toHexString() !== playerInfo.identity.toHexString())
+      );
+    });
+
+    return () => {
+      if (subscription) {
+        subscription.unsubscribe();
+        setSubscription(null);
+      }
+    };
+  }, [conn, isConnected, subscription]);
+
+  return playerInfos;
+}
