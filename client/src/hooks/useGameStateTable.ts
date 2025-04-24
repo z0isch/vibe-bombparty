@@ -4,18 +4,14 @@ import { eventQueue } from '../eventQueue';
 import * as moduleBindings from '../generated';
 import { GameStateTable } from '../generated/game_state_table_type';
 
-export function useGameStateTable(
-  conn: moduleBindings.DbConnection | null,
-  gameId: number,
-  isConnected: boolean
-) {
+export function useGameStateTable(conn: moduleBindings.DbConnection | null, gameId: number) {
   const [gameStateTable, setGameStateTable] = useState<GameStateTable | null>(null);
   const [subscription, setSubscription] = useState<ReturnType<
     typeof conn.subscriptionBuilder.prototype.subscribe
   > | null>(null);
 
   useEffect(() => {
-    if (!conn || !isConnected || subscription !== null) return;
+    if (!conn || subscription !== null) return;
     setGameStateTable(Array.from(conn.db.gameState.iter()).find((g) => g.gameId === gameId));
 
     // Set up subscription
@@ -62,7 +58,7 @@ export function useGameStateTable(
         setSubscription(null);
       }
     };
-  }, [conn, gameId, isConnected, subscription]);
+  }, [conn, gameId, subscription]);
 
   return gameStateTable;
 }

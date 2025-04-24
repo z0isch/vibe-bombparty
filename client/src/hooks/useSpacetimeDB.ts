@@ -7,17 +7,8 @@ import * as moduleBindings from '../generated';
 import { PlayerGameData } from '../generated/player_game_data_type';
 import { setupSoundEffects } from '../soundEffects';
 
-export interface SpacetimeDBState {
-  connectionIdentity: string | null;
-  isSubscribed: boolean;
-  isConnected: boolean;
-  conn: moduleBindings.DbConnection | null;
-}
-
-export function useSpacetimeDB(): SpacetimeDBState {
+export function useSpacetimeDB(): moduleBindings.DbConnection | null {
   const [conn, setConn] = useState<moduleBindings.DbConnection | null>(null);
-  const [connectionIdentity, setConnectionIdentity] = useState<string | null>(null);
-  const [isSubscribed, setIsSubscribed] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
   // Set up sound effects when connection is established
@@ -31,23 +22,6 @@ export function useSpacetimeDB(): SpacetimeDBState {
     return cleanupSoundEffects;
   }, [conn?.identity]);
 
-  // Set up subscription and callbacks
-  useEffect(() => {
-    if (!conn || !isConnected || isSubscribed) return;
-
-    // Set up subscription
-    conn
-      .subscriptionBuilder()
-      .onApplied(() => {
-        setIsSubscribed(true);
-      })
-      .onError((error) => {
-        console.error('Subscription error:', error);
-        setIsSubscribed(false);
-      })
-      .subscribe(['SELECT * FROM player_info']);
-  }, [conn, isConnected, isSubscribed, connectionIdentity]);
-
   // Set up connection
   useEffect(() => {
     const connect = async () => {
@@ -59,16 +33,10 @@ export function useSpacetimeDB(): SpacetimeDBState {
           .onConnect(
             (connection: moduleBindings.DbConnection, identity: Identity, token: string) => {
               setIsConnected(true);
-
-              // Store connection identity and token
-              const identityStr = identity.toHexString();
-              setConnectionIdentity(identityStr);
               localStorage.setItem('token', token);
             }
           )
           .onDisconnect(() => {
-            setConnectionIdentity(null);
-            setIsSubscribed(false);
             setIsConnected(false);
           })
           .build();
@@ -87,10 +55,5 @@ export function useSpacetimeDB(): SpacetimeDBState {
     };
   }, []);
 
-  return {
-    connectionIdentity,
-    isSubscribed,
-    isConnected,
-    conn,
-  };
+  return isConnected ? conn : null;
 }

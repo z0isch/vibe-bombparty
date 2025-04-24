@@ -4,12 +4,11 @@ import { useGameTable } from '../hooks/useGameTable';
 
 interface GameListProps {
   conn: DbConnection | null;
-  isConnected: boolean;
   onSelectGame: (gameId: number) => void;
 }
 
-export function GameList({ conn, isConnected, onSelectGame }: GameListProps) {
-  const games = useGameTable(conn, isConnected);
+export function GameList({ conn, onSelectGame }: GameListProps) {
+  const games = useGameTable(conn);
 
   return (
     <div className="bg-gray-800 rounded-lg p-4 mb-8">

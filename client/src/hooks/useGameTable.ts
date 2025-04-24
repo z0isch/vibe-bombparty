@@ -3,14 +3,14 @@ import { useEffect, useState } from 'react';
 import * as moduleBindings from '../generated';
 import { Game } from '../generated/game_type';
 
-export function useGameTable(conn: moduleBindings.DbConnection | null, isConnected: boolean) {
+export function useGameTable(conn: moduleBindings.DbConnection | null) {
   const [games, setGames] = useState<Game[]>([]);
   const [subscription, setSubscription] = useState<ReturnType<
     typeof conn.subscriptionBuilder.prototype.subscribe
   > | null>(null);
 
   useEffect(() => {
-    if (!conn || !isConnected || subscription !== null) return;
+    if (!conn || subscription !== null) return;
     setGames(Array.from(conn.db.game.iter()));
 
     // Set up subscription
@@ -45,7 +45,7 @@ export function useGameTable(conn: moduleBindings.DbConnection | null, isConnect
         setSubscription(null);
       }
     };
-  }, [conn, isConnected, subscription]);
+  }, [conn, subscription]);
 
   return games;
 }

@@ -6,20 +6,20 @@ import { usePlayerInfoTable } from './hooks/usePlayerInfoTable';
 import { useSpacetimeDB } from './hooks/useSpacetimeDB';
 
 function App() {
-  const { connectionIdentity, isConnected, conn } = useSpacetimeDB();
-  const playerInfos = usePlayerInfoTable(conn, isConnected);
+  const conn = useSpacetimeDB();
+  const playerInfos = usePlayerInfoTable(conn);
 
   // Track selected game ID, initially null (no game selected)
   const [selectedGameId, setSelectedGameId] = useState<number | null>(null);
 
   const handleJoinGame = async () => {
-    if (!isConnected || selectedGameId === null) return;
+    if (!conn || selectedGameId === null) return;
 
     const username = prompt('Enter your username:');
     if (!username) return;
 
     try {
-      await conn?.reducers.registerPlayer(selectedGameId, username);
+      await conn.reducers.registerPlayer(selectedGameId, username);
     } catch (error) {
       // Silently handle errors
     }
@@ -41,14 +41,12 @@ function App() {
         </header>
 
         {selectedGameId === null ? (
-          <GameList conn={conn} isConnected={isConnected} onSelectGame={setSelectedGameId} />
+          <GameList conn={conn} onSelectGame={setSelectedGameId} />
         ) : (
           <GameState
             gameId={selectedGameId}
             conn={conn}
-            isConnected={isConnected}
             playerInfos={playerInfos}
-            connectionIdentity={connectionIdentity}
             onJoinGame={handleJoinGame}
           />
         )}

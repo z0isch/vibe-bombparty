@@ -12,18 +12,11 @@ import { Player } from './Player';
 export interface PlayingProps {
   playingState: PlayingState;
   playerInfos: PlayerInfoTable[];
-  connectionIdentity: string;
   conn: DbConnection;
   gameId: number;
 }
 
-export function Playing({
-  playingState,
-  playerInfos,
-  connectionIdentity,
-  conn,
-  gameId,
-}: PlayingProps) {
+export function Playing({ playingState, playerInfos, conn, gameId }: PlayingProps) {
   const [timeLeft, setTimeLeft] = useState(playingState.settings.turnTimeoutSeconds);
   const timerRef = useRef<number>();
 
@@ -153,7 +146,7 @@ export function Playing({
 
                     // Find current player's index
                     const currentPlayerIndex = playingState.players.findIndex(
-                      (p) => p.playerIdentity.toHexString() === connectionIdentity
+                      (p) => p.playerIdentity.toHexString() === conn.identity.toHexString()
                     );
 
                     // Calculate positions relative to current player (not current turn)
@@ -176,7 +169,7 @@ export function Playing({
 
                     // Check if this is the current player (you)
                     const isCurrentPlayer =
-                      player.playerIdentity.toHexString() === connectionIdentity;
+                      player.playerIdentity.toHexString() === conn.identity.toHexString();
 
                     // Check if it's this player's turn by finding their index in the original array
                     const playerIndex = playingState.players.findIndex(
