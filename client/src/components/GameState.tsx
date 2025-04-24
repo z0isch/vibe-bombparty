@@ -1,4 +1,4 @@
-import { DbConnection } from '../generated';
+import { DbConnection, Game } from '../generated';
 import { PlayerInfoTable } from '../generated/player_info_table_type';
 import { useGameStateTable } from '../hooks/useGameStateTable';
 import { Countdown } from './Countdown';
@@ -6,14 +6,23 @@ import { Playing } from './Playing';
 import { Settings } from './Settings';
 
 interface GameStateProps {
-  gameId: number;
+  game: Game;
   conn: DbConnection | null;
   playerInfos: PlayerInfoTable[];
   onJoinGame: () => void;
 }
 
-export function GameState({ gameId, conn, playerInfos, onJoinGame }: GameStateProps) {
-  const gameStateTable = useGameStateTable(conn, gameId);
+// Header component to show game name consistently across states
+function GameHeader({ name }: { name: string }) {
+  return (
+    <div className="mb-6">
+      <h1 className="text-3xl font-bold text-yellow-400">{name}</h1>
+    </div>
+  );
+}
+
+export function GameState({ game, conn, playerInfos, onJoinGame }: GameStateProps) {
+  const gameStateTable = useGameStateTable(conn, game.id);
 
   if (!gameStateTable?.state || !conn) return null;
 
@@ -47,26 +56,37 @@ export function GameState({ gameId, conn, playerInfos, onJoinGame }: GameStatePr
   switch (gameStateTable.state.tag) {
     case 'Settings':
       return (
-        <Settings
-          gameId={gameStateTable.gameId}
-          turnTimeoutSeconds={gameStateTable.state.value.turnTimeoutSeconds}
-          players={gameStateTable.state.value.players}
-          playerInfos={playerInfos}
-          conn={conn}
-          onJoinGame={onJoinGame}
-          isCurrentPlayer={!!getCurrentPlayer()}
-        />
+        <div>
+          <GameHeader name={game.name} />
+          <Settings
+            gameId={gameStateTable.gameId}
+            turnTimeoutSeconds={gameStateTable.state.value.turnTimeoutSeconds}
+            players={gameStateTable.state.value.players}
+            playerInfos={playerInfos}
+            conn={conn}
+            onJoinGame={onJoinGame}
+            isCurrentPlayer={!!getCurrentPlayer()}
+          />
+        </div>
       );
     case 'Countdown':
-      return <Countdown countdownState={gameStateTable.state.value} playerInfos={playerInfos} />;
+      return (
+        <div>
+          <GameHeader name={game.name} />
+          <Countdown countdownState={gameStateTable.state.value} playerInfos={playerInfos} />
+        </div>
+      );
     case 'Playing':
       return (
-        <Playing
-          gameId={gameStateTable.gameId}
-          playingState={gameStateTable.state.value}
-          playerInfos={playerInfos}
-          conn={conn}
-        />
+        <div>
+          <GameHeader name={game.name} />
+          <Playing
+            gameId={gameStateTable.gameId}
+            playingState={gameStateTable.state.value}
+            playerInfos={playerInfos}
+            conn={conn}
+          />
+        </div>
       );
     default: {
       // This ensures we handle all possible states

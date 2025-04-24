@@ -2,6 +2,7 @@ import { useState } from 'react';
 
 import { GameList } from './components/GameList';
 import { GameState } from './components/GameState';
+import { Game } from './generated';
 import { usePlayerInfoTable } from './hooks/usePlayerInfoTable';
 import { useSpacetimeDB } from './hooks/useSpacetimeDB';
 
@@ -10,16 +11,16 @@ function App() {
   const playerInfos = usePlayerInfoTable(conn);
 
   // Track selected game ID, initially null (no game selected)
-  const [selectedGameId, setSelectedGameId] = useState<number | null>(null);
+  const [selectedGame, setSelectedGame] = useState<Game | null>(null);
 
   const handleJoinGame = async () => {
-    if (!conn || selectedGameId === null) return;
+    if (!conn || selectedGame === null) return;
 
     const username = prompt('Enter your username:');
     if (!username) return;
 
     try {
-      await conn.reducers.registerPlayer(selectedGameId, username);
+      await conn.reducers.registerPlayer(selectedGame.id, username);
     } catch (error) {
       // Silently handle errors
     }
@@ -30,9 +31,9 @@ function App() {
       <div className="max-w-4xl mx-auto">
         <header className="mb-8">
           <h1 className="text-4xl font-bold mb-4">Vibe Bombparty</h1>
-          {selectedGameId !== null && (
+          {selectedGame !== null && (
             <button
-              onClick={() => setSelectedGameId(null)}
+              onClick={() => setSelectedGame(null)}
               className="text-sm text-gray-400 hover:text-white transition-colors"
             >
               ← Back to game list
@@ -40,11 +41,11 @@ function App() {
           )}
         </header>
 
-        {selectedGameId === null ? (
-          <GameList conn={conn} onSelectGame={setSelectedGameId} />
+        {selectedGame === null ? (
+          <GameList conn={conn} onSelectGame={setSelectedGame} />
         ) : (
           <GameState
-            gameId={selectedGameId}
+            game={selectedGame}
             conn={conn}
             playerInfos={playerInfos}
             onJoinGame={handleJoinGame}

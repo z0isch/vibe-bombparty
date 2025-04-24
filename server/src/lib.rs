@@ -695,26 +695,59 @@ fn get_example_words(trigram: &str, ctx: &ReducerContext) -> Vec<String> {
 }
 
 // Initialize the game when the module is first published
-#[spacetimedb::reducer(init)]
-pub fn init(ctx: &ReducerContext) {
+#[spacetimedb::reducer]
+pub fn create_game(ctx: &ReducerContext, name: String) -> Result<(), String> {
+    // Create new game
     let game = Game {
-        id: 1,
-        name: "Bombparty".to_string(),
+        id: 0, // Auto-incremented
+        name,
         created_at: ctx.timestamp,
         updated_at: ctx.timestamp,
-        player_identities: Vec::new(),
+        player_identities: vec![ctx.sender], // Add creator as first player
     };
-    ctx.db.game().insert(game);
+    let game = ctx.db.game().insert(game);
 
+    // Create initial game state
     let game_state = GameStateTable {
-        game_id: 1,
+        game_id: game.id,
         state: GameState::Settings(SettingsState {
             turn_timeout_seconds: 5, // Default 5 seconds timeout
-            players: Vec::new(),
+            players: vec![create_initial_player_game_data(ctx.sender)], // Add creator as first player
         }),
         updated_at: ctx.timestamp,
     };
     ctx.db.game_state().insert(game_state);
+
+    Ok(())
+}
+
+#[spacetimedb::reducer]
+pub fn delete_game(ctx: &ReducerContext, game_id: u32) -> Result<(), String> {
+    // Check if game exists
+    let _game = ctx.db.game().id().find(&game_id).ok_or("Game not found")?;
+
+    // Only allow deletion if game is in Settings state
+    if let Some(game_state) = ctx.db.game_state().game_id().find(&game_id) {
+        match game_state.state {
+            GameState::Settings(_) => {
+                // Delete game state first (due to foreign key)
+                ctx.db.game_state().game_id().delete(&game_id);
+                // Then delete game
+                ctx.db.game().id().delete(&game_id);
+                Ok(())
+            }
+            GameState::Countdown(_) => Err("Cannot delete game during countdown".to_string()),
+            GameState::Playing(_) => Err("Cannot delete game while in progress".to_string()),
+        }
+    } else {
+        Err("Game state not found".to_string())
+    }
+}
+
+// Initialize the game when the module is first published
+#[spacetimedb::reducer(init)]
+pub fn init(_ctx: &ReducerContext) {
+    // No longer create a default game - games will be created by players
 }
 
 #[spacetimedb::reducer]

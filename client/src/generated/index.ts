@@ -32,6 +32,10 @@ import {
 } from "@clockworklabs/spacetimedb-sdk";
 
 // Import and reexport all reducer arg types
+import { CreateGame } from "./create_game_reducer.ts";
+export { CreateGame };
+import { DeleteGame } from "./delete_game_reducer.ts";
+export { DeleteGame };
 import { GameCountdown } from "./game_countdown_reducer.ts";
 export { GameCountdown };
 import { IdentityConnected } from "./identity_connected_reducer.ts";
@@ -128,6 +132,14 @@ const REMOTE_MODULE = {
     },
   },
   reducers: {
+    create_game: {
+      reducerName: "create_game",
+      argsType: CreateGame.getTypeScriptAlgebraicType(),
+    },
+    delete_game: {
+      reducerName: "delete_game",
+      argsType: DeleteGame.getTypeScriptAlgebraicType(),
+    },
     game_countdown: {
       reducerName: "game_countdown",
       argsType: GameCountdown.getTypeScriptAlgebraicType(),
@@ -199,6 +211,8 @@ const REMOTE_MODULE = {
 
 // A type representing all the possible variants of a reducer.
 export type Reducer = never
+| { name: "CreateGame", args: CreateGame }
+| { name: "DeleteGame", args: DeleteGame }
 | { name: "GameCountdown", args: GameCountdown }
 | { name: "IdentityConnected", args: IdentityConnected }
 | { name: "IdentityDisconnected", args: IdentityDisconnected }
@@ -214,6 +228,38 @@ export type Reducer = never
 
 export class RemoteReducers {
   constructor(private connection: DbConnectionImpl, private setCallReducerFlags: SetReducerFlags) {}
+
+  createGame(name: string) {
+    const __args = { name };
+    let __writer = new BinaryWriter(1024);
+    CreateGame.getTypeScriptAlgebraicType().serialize(__writer, __args);
+    let __argsBuffer = __writer.getBuffer();
+    this.connection.callReducer("create_game", __argsBuffer, this.setCallReducerFlags.createGameFlags);
+  }
+
+  onCreateGame(callback: (ctx: ReducerEventContext, name: string) => void) {
+    this.connection.onReducer("create_game", callback);
+  }
+
+  removeOnCreateGame(callback: (ctx: ReducerEventContext, name: string) => void) {
+    this.connection.offReducer("create_game", callback);
+  }
+
+  deleteGame(gameId: number) {
+    const __args = { gameId };
+    let __writer = new BinaryWriter(1024);
+    DeleteGame.getTypeScriptAlgebraicType().serialize(__writer, __args);
+    let __argsBuffer = __writer.getBuffer();
+    this.connection.callReducer("delete_game", __argsBuffer, this.setCallReducerFlags.deleteGameFlags);
+  }
+
+  onDeleteGame(callback: (ctx: ReducerEventContext, gameId: number) => void) {
+    this.connection.onReducer("delete_game", callback);
+  }
+
+  removeOnDeleteGame(callback: (ctx: ReducerEventContext, gameId: number) => void) {
+    this.connection.offReducer("delete_game", callback);
+  }
 
   gameCountdown(arg: GameCountdownSchedule) {
     const __args = { arg };
@@ -378,6 +424,16 @@ export class RemoteReducers {
 }
 
 export class SetReducerFlags {
+  createGameFlags: CallReducerFlags = 'FullUpdate';
+  createGame(flags: CallReducerFlags) {
+    this.createGameFlags = flags;
+  }
+
+  deleteGameFlags: CallReducerFlags = 'FullUpdate';
+  deleteGame(flags: CallReducerFlags) {
+    this.deleteGameFlags = flags;
+  }
+
   gameCountdownFlags: CallReducerFlags = 'FullUpdate';
   gameCountdown(flags: CallReducerFlags) {
     this.gameCountdownFlags = flags;
