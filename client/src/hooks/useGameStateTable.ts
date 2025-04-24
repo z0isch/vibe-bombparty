@@ -16,6 +16,7 @@ export function useGameStateTable(
 
   useEffect(() => {
     if (!conn || !isConnected || subscription !== null) return;
+    setGameStateTable(Array.from(conn.db.gameState.iter()).find((g) => g.gameId === gameId));
 
     // Set up subscription
     const newSubscription = conn

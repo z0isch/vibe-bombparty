@@ -11,6 +11,7 @@ export function usePlayerInfoTable(conn: moduleBindings.DbConnection | null, isC
 
   useEffect(() => {
     if (!conn || !isConnected || subscription !== null) return;
+    setPlayerInfos(Array.from(conn.db.playerInfo.iter()));
 
     // Set up subscription
     const newSubscription = conn
