@@ -1,26 +1,24 @@
 import { Identity } from '@clockworklabs/spacetimedb-sdk';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-import { eventQueue } from '../eventQueue';
 import * as moduleBindings from '../generated';
-import { PlayerGameData } from '../generated/player_game_data_type';
 import { setupSoundEffects } from '../soundEffects';
 
 export function useSpacetimeDB(): moduleBindings.DbConnection | null {
-  const [conn, setConn] = useState<moduleBindings.DbConnection | null>(null);
+  const connRef = useRef<moduleBindings.DbConnection | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
   // Set up sound effects when connection is established
   useEffect(() => {
-    if (!conn?.identity) return;
+    if (!connRef.current?.identity && !isConnected) return;
 
     // Set up sound effects and get cleanup function
-    const cleanupSoundEffects = setupSoundEffects(conn.identity);
+    const cleanupSoundEffects = setupSoundEffects(connRef.current.identity);
 
     // Clean up when connection changes or component unmounts
     return cleanupSoundEffects;
-  }, [conn?.identity]);
+  }, [connRef.current?.identity, isConnected]);
 
   // Set up connection
   useEffect(() => {
@@ -41,7 +39,7 @@ export function useSpacetimeDB(): moduleBindings.DbConnection | null {
           })
           .build();
 
-        setConn(connection);
+        connRef.current = connection;
       } catch (error) {
         console.error('Failed to connect:', error);
       }
@@ -50,10 +48,10 @@ export function useSpacetimeDB(): moduleBindings.DbConnection | null {
     connect();
 
     return () => {
-      conn?.disconnect();
-      setConn(null);
+      connRef.current?.disconnect();
+      connRef.current = null;
     };
   }, []);
 
-  return isConnected ? conn : null;
+  return isConnected ? connRef.current : null;
 }

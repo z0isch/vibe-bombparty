@@ -1,5 +1,4 @@
 import { DbConnection } from '../generated';
-import { Game } from '../generated/game_type';
 import { useGameTable } from '../hooks/useGameTable';
 
 interface GameListProps {

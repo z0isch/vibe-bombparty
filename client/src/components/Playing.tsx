@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { DbConnection } from '../generated';
-import { GameStateTable } from '../generated/game_state_table_type';
-import { PlayerGameData } from '../generated/player_game_data_type';
 import { PlayerInfoTable } from '../generated/player_info_table_type';
 import { PlayingState } from '../generated/playing_state_type';
 import { CircularCountdown } from './CircularCountdown';

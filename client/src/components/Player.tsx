@@ -3,7 +3,6 @@ import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 
 import { DbConnection } from '../generated';
-import { GameStateTable } from '../generated/game_state_table_type';
 import { PlayerGameData } from '../generated/player_game_data_type';
 import { PlayerInfoTable } from '../generated/player_info_table_type';
 import { usePlayerEventMotionProps } from '../hooks/usePlayerEventMotionProps';
