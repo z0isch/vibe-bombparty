@@ -128,6 +128,7 @@ pub struct Game {
     pub name: String,
     pub created_at: Timestamp,
     pub updated_at: Timestamp,
+    pub player_identities: Vec<Identity>, // Track connected players
 }
 
 #[spacetimedb::table(name = turn_timeout_schedule, scheduled(turn_timeout))]
@@ -701,6 +702,7 @@ pub fn init(ctx: &ReducerContext) {
         name: "Bombparty".to_string(),
         created_at: ctx.timestamp,
         updated_at: ctx.timestamp,
+        player_identities: Vec::new(),
     };
     ctx.db.game().insert(game);
 
@@ -775,6 +777,15 @@ pub fn register_player(ctx: &ReducerContext, game_id: u32, username: String) -> 
         ctx.db.player_info().insert(player_info);
     }
 
+    // Update game's player_identities list
+    if let Some(mut game) = ctx.db.game().id().find(&game_id) {
+        if !game.player_identities.contains(&ctx.sender) {
+            game.player_identities.push(ctx.sender);
+            game.updated_at = ctx.timestamp;
+            ctx.db.game().id().update(game);
+        }
+    }
+
     if let Some(mut game_state) = get_game_state(ctx, game_id) {
         match &mut game_state.state {
             GameState::Settings(settings) => {
@@ -805,6 +816,19 @@ pub fn remove_player(
     game_id: u32,
     player_identity: Identity,
 ) -> Result<(), String> {
+    // Update game's player_identities list
+    if let Some(mut game) = ctx.db.game().id().find(&game_id) {
+        if let Some(pos) = game
+            .player_identities
+            .iter()
+            .position(|id| *id == player_identity)
+        {
+            game.player_identities.remove(pos);
+            game.updated_at = ctx.timestamp;
+            ctx.db.game().id().update(game);
+        }
+    }
+
     if let Some(mut game_state) = get_game_state(ctx, game_id) {
         match &mut game_state.state {
             GameState::Settings(settings) => {

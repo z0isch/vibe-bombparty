@@ -35,6 +35,7 @@ export type Game = {
   name: string,
   createdAt: Timestamp,
   updatedAt: Timestamp,
+  playerIdentities: Identity[],
 };
 
 /**
@@ -51,6 +52,7 @@ export namespace Game {
       new ProductTypeElement("name", AlgebraicType.createStringType()),
       new ProductTypeElement("createdAt", AlgebraicType.createTimestampType()),
       new ProductTypeElement("updatedAt", AlgebraicType.createTimestampType()),
+      new ProductTypeElement("playerIdentities", AlgebraicType.createArrayType(AlgebraicType.createIdentityType())),
     ]);
   }
 
