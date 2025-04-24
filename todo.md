@@ -7,6 +7,7 @@
 - ~countdown timer for start~
 - ~shuffle players on start~
 - multiple games
+  - Add/delete games
 - ~use https://www.dictionary.com/browse/proboscidean~
 - ~trigram dictionary is wrong at the end?~
 - ~highlight in gold other players long words~
