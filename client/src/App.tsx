@@ -1,13 +1,16 @@
 import { Countdown } from './components/Countdown';
 import { Playing } from './components/Playing';
 import { Settings } from './components/Settings';
+import { useGameStateTable } from './hooks/useGameStateTable';
 import { useSpacetimeDB } from './hooks/useSpacetimeDB';
 
 function App() {
-  const [
-    { gameStateTable, connectionIdentity, currentPlayer, playerInfos, isConnected, conn },
-    { registerPlayer },
-  ] = useSpacetimeDB();
+  const [{ connectionIdentity, playerInfos, isConnected, conn }, { registerPlayer }] =
+    useSpacetimeDB();
+
+  // For now, we'll hardcode game ID to 1 since that's what the server uses
+  const gameId = 1;
+  const gameStateTable = useGameStateTable(conn, gameId, isConnected);
 
   const handleJoinGame = async () => {
     if (!isConnected) return;
@@ -16,9 +19,36 @@ function App() {
     if (!username) return;
 
     try {
-      await registerPlayer(username);
+      await registerPlayer(gameId, username);
     } catch (error) {
       // Silently handle errors
+    }
+  };
+
+  // Helper function to get current player from game state
+  const getCurrentPlayer = () => {
+    if (!connectionIdentity || !gameStateTable?.state) return null;
+    switch (gameStateTable.state.tag) {
+      case 'Countdown':
+        return (
+          gameStateTable.state.value.settings.players.find(
+            (p) => p.playerIdentity.toHexString() === connectionIdentity
+          ) || null
+        );
+      case 'Playing':
+        return (
+          gameStateTable.state.value.players.find(
+            (p) => p.playerIdentity.toHexString() === connectionIdentity
+          ) || null
+        );
+      case 'Settings':
+        return (
+          gameStateTable.state.value.players.find(
+            (p) => p.playerIdentity.toHexString() === connectionIdentity
+          ) || null
+        );
+      default:
+        return null;
     }
   };
 
@@ -35,7 +65,7 @@ function App() {
             playerInfos={playerInfos}
             conn={conn}
             onJoinGame={handleJoinGame}
-            isCurrentPlayer={!!currentPlayer}
+            isCurrentPlayer={!!getCurrentPlayer()}
           />
         );
       case 'Countdown':
