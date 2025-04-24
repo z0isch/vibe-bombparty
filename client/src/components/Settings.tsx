@@ -29,7 +29,6 @@ export function Settings({
   useEffect(() => {
     setTurnTimeout(turnTimeoutSeconds);
   }, [turnTimeoutSeconds]);
-
   const handleStartGame = async () => {
     if (!conn) return;
     try {
@@ -83,9 +82,6 @@ export function Settings({
                   }`}
                 />
                 <span className="flex-grow">{playerInfo.username}</span>
-                <span className="text-yellow-400 font-medium mr-4">
-                  {playerInfo.wins} {playerInfo.wins === 1 ? 'win' : 'wins'}
-                </span>
                 <button
                   onClick={async () => {
                     try {

@@ -32,6 +32,7 @@ import {
 } from "@clockworklabs/spacetimedb-sdk";
 import { GameStateTable } from "./game_state_table_type";
 import { GameState as __GameState } from "./game_state_type";
+import { PlayerWins as __PlayerWins } from "./player_wins_type";
 
 import { EventContext, Reducer, RemoteReducers, RemoteTables } from ".";
 

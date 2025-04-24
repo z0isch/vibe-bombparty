@@ -39,7 +39,6 @@ pub struct PlayerInfoTable {
     pub username: String,
     pub is_online: bool,
     pub last_active: Timestamp,
-    pub wins: u32, // Track number of wins
 }
 
 #[derive(Clone, SpacetimeType)]
@@ -59,6 +58,12 @@ pub struct PlayerEvents {
 pub struct TrigramExample {
     pub trigram: String,
     pub example_words: Vec<String>,
+}
+
+#[derive(Clone, SpacetimeType)]
+pub struct PlayerWins {
+    pub player_identity: Identity,
+    pub wins: u32,
 }
 
 #[derive(Clone, SpacetimeType)]
@@ -117,6 +122,7 @@ pub struct GameStateTable {
     pub game_id: u32, // Foreign key to Game table
     pub state: GameState,
     pub updated_at: Timestamp,
+    pub player_wins: Vec<PlayerWins>, // Track number of wins per player in this game
 }
 
 #[spacetimedb::table(name = game, public)]
@@ -257,6 +263,7 @@ pub fn game_countdown(ctx: &ReducerContext, arg: GameCountdownSchedule) -> Resul
                     game_id: arg.game_id,
                     state: GameState::Playing(playing_state),
                     updated_at: ctx.timestamp,
+                    player_wins: game_state.player_wins, // Preserve existing wins
                 };
 
                 // Update game state
@@ -325,14 +332,23 @@ fn end_turn(state: &mut PlayingState, ctx: &ReducerContext, game_id: u32) {
 
         // Update winner stats if there is a winner
         if let Some(winner) = state.players.iter().find(|p| p.lives > 0) {
-            if let Some(mut winner_info) = ctx
-                .db
-                .player_info()
-                .identity()
-                .find(&winner.player_identity)
-            {
-                winner_info.wins += 1;
-                ctx.db.player_info().identity().update(winner_info);
+            let winner_id = winner.player_identity;
+
+            // Get and update the game state to update wins
+            if let Some(mut game_state) = ctx.db.game_state().game_id().find(&game_id) {
+                if let Some(wins) = game_state
+                    .player_wins
+                    .iter_mut()
+                    .find(|w| w.player_identity == winner_id)
+                {
+                    wins.wins += 1;
+                } else {
+                    game_state.player_wins.push(PlayerWins {
+                        player_identity: winner_id,
+                        wins: 1,
+                    });
+                }
+                update_game_state(ctx, game_state);
             }
         }
 
@@ -694,7 +710,6 @@ fn get_example_words(trigram: &str, ctx: &ReducerContext) -> Vec<String> {
     }
 }
 
-// Initialize the game when the module is first published
 #[spacetimedb::reducer]
 pub fn create_game(ctx: &ReducerContext, name: String) -> Result<(), String> {
     // Create new game
@@ -703,18 +718,17 @@ pub fn create_game(ctx: &ReducerContext, name: String) -> Result<(), String> {
         name,
         created_at: ctx.timestamp,
         updated_at: ctx.timestamp,
-        player_identities: vec![ctx.sender], // Add creator as first player
+        player_identities: Vec::new(),
     };
     let game = ctx.db.game().insert(game);
-
-    // Create initial game state
     let game_state = GameStateTable {
         game_id: game.id,
         state: GameState::Settings(SettingsState {
-            turn_timeout_seconds: 5, // Default 5 seconds timeout
-            players: vec![create_initial_player_game_data(ctx.sender)], // Add creator as first player
+            turn_timeout_seconds: 7,
+            players: Vec::new(),
         }),
         updated_at: ctx.timestamp,
+        player_wins: Vec::new(), // Initialize empty wins tracking
     };
     ctx.db.game_state().insert(game_state);
 
@@ -805,7 +819,6 @@ pub fn register_player(ctx: &ReducerContext, game_id: u32, username: String) -> 
             username,
             is_online: true,
             last_active: ctx.timestamp,
-            wins: 0,
         };
         ctx.db.player_info().insert(player_info);
     }
@@ -1013,7 +1026,7 @@ pub fn restart_game(ctx: &ReducerContext, game_id: u32) -> Result<(), String> {
                     .map(|p| create_initial_player_game_data(p.player_identity))
                     .collect();
 
-                // Create new game state with settings state
+                // Create new game state with settings state, preserving wins
                 let new_game_state = GameStateTable {
                     game_id,
                     state: GameState::Settings(SettingsState {
@@ -1021,6 +1034,7 @@ pub fn restart_game(ctx: &ReducerContext, game_id: u32) -> Result<(), String> {
                         players: reset_players,
                     }),
                     updated_at: ctx.timestamp,
+                    player_wins: game_state.player_wins, // Preserve existing wins
                 };
 
                 update_game_state(ctx, new_game_state);
