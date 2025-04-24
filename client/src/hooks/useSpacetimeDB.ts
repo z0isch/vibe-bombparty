@@ -16,11 +16,7 @@ export interface SpacetimeDBState {
   conn: moduleBindings.DbConnection | null;
 }
 
-export interface SpacetimeDBActions {
-  registerPlayer: (gameId: number, username: string) => Promise<void>;
-}
-
-export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
+export function useSpacetimeDB(): SpacetimeDBState {
   const [conn, setConn] = useState<moduleBindings.DbConnection | null>(null);
   const [playerInfos, setPlayerInfos] = useState<PlayerInfoTable[]>([]);
   const [connectionIdentity, setConnectionIdentity] = useState<string | null>(null);
@@ -113,21 +109,11 @@ export function useSpacetimeDB(): [SpacetimeDBState, SpacetimeDBActions] {
     };
   }, []);
 
-  const registerPlayer = async (gameId: number, username: string) => {
-    if (!conn) throw new Error('Not connected to SpacetimeDB');
-    await conn.reducers.registerPlayer(gameId, username);
+  return {
+    connectionIdentity,
+    isSubscribed,
+    playerInfos,
+    isConnected,
+    conn,
   };
-
-  return [
-    {
-      connectionIdentity,
-      isSubscribed,
-      playerInfos,
-      isConnected,
-      conn,
-    },
-    {
-      registerPlayer,
-    },
-  ];
 }

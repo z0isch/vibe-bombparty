@@ -5,8 +5,7 @@ import { useGameStateTable } from './hooks/useGameStateTable';
 import { useSpacetimeDB } from './hooks/useSpacetimeDB';
 
 function App() {
-  const [{ connectionIdentity, playerInfos, isConnected, conn }, { registerPlayer }] =
-    useSpacetimeDB();
+  const { connectionIdentity, playerInfos, isConnected, conn } = useSpacetimeDB();
 
   // For now, we'll hardcode game ID to 1 since that's what the server uses
   const gameId = 1;
@@ -19,7 +18,7 @@ function App() {
     if (!username) return;
 
     try {
-      await registerPlayer(gameId, username);
+      await conn?.reducers.registerPlayer(gameId, username);
     } catch (error) {
       // Silently handle errors
     }
