@@ -37,7 +37,8 @@ export function useSpacetimeDB(): moduleBindings.DbConnection | null {
               const storedIdentity = localStorage.getItem('identity');
               if (!storedIdentity || storedIdentity !== identity.toHexString()) {
                 // We need to register - prompt for username
-                const username = prompt('Enter your username:');
+                let username = prompt('Enter your username:');
+                username = username || 'Player';
                 if (username) {
                   try {
                     // Register the player
