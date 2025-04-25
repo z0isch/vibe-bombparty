@@ -8,8 +8,8 @@ import { usePlayerInfoTable } from './hooks/usePlayerInfoTable';
 import { useSpacetimeDB } from './hooks/useSpacetimeDB';
 
 function App() {
-  const { conn, showNameDialog, setShowNameDialog } = useSpacetimeDB();
-  const playerInfos = usePlayerInfoTable(conn);
+  const conn = useSpacetimeDB();
+  const { playerInfos, showNameDialog, setShowNameDialog } = usePlayerInfoTable(conn);
 
   // Track selected game ID, initially null (no game selected)
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);

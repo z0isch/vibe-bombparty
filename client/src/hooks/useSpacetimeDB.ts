@@ -5,14 +5,9 @@ import { useEffect, useRef, useState } from 'react';
 import * as moduleBindings from '../generated';
 import { setupSoundEffects } from '../soundEffects';
 
-export function useSpacetimeDB(): {
-  conn: moduleBindings.DbConnection | null;
-  showNameDialog: boolean;
-  setShowNameDialog: (show: boolean) => void;
-} {
+export function useSpacetimeDB(): moduleBindings.DbConnection | null {
   const connRef = useRef<moduleBindings.DbConnection | null>(null);
   const [isConnected, setIsConnected] = useState(false);
-  const [showNameDialog, setShowNameDialog] = useState(false);
 
   // Set up sound effects when connection is established
   useEffect(() => {
@@ -37,16 +32,6 @@ export function useSpacetimeDB(): {
             async (connection: moduleBindings.DbConnection, identity: Identity, token: string) => {
               // Store the token
               localStorage.setItem('token', token);
-
-              // Check if we need to register the player
-              const storedIdentity = localStorage.getItem('identity');
-              if (!storedIdentity || storedIdentity !== identity.toHexString()) {
-                // Store the new identity
-                localStorage.setItem('identity', identity.toHexString());
-                // Show the name dialog
-                setShowNameDialog(true);
-              }
-
               setIsConnected(true);
             }
           )
@@ -69,9 +54,5 @@ export function useSpacetimeDB(): {
     };
   }, []);
 
-  return {
-    conn: connRef.current,
-    showNameDialog,
-    setShowNameDialog,
-  };
+  return connRef.current;
 }

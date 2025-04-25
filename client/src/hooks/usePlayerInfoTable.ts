@@ -8,6 +8,7 @@ export function usePlayerInfoTable(conn: moduleBindings.DbConnection | null) {
   const [subscription, setSubscription] = useState<ReturnType<
     typeof conn.subscriptionBuilder.prototype.subscribe
   > | null>(null);
+  const [showNameDialog, setShowNameDialog] = useState(false);
 
   useEffect(() => {
     if (!conn || subscription !== null) return;
@@ -17,7 +18,19 @@ export function usePlayerInfoTable(conn: moduleBindings.DbConnection | null) {
     const newSubscription = conn
       .subscriptionBuilder()
       .onApplied(() => {
-        // Subscription applied successfully
+        const playerInfo = Array.from(conn.db.playerInfo.iter()).find(
+          (p) => p.identity.toHexString() === conn.identity.toHexString()
+        );
+
+        // Check if we need to register the player
+        const storedIdentity = localStorage.getItem('identity');
+        if (!storedIdentity || storedIdentity !== conn.identity.toHexString()) {
+          // Store the new identity
+          localStorage.setItem('identity', conn.identity.toHexString());
+        }
+        if (!playerInfo) {
+          setShowNameDialog(true);
+        }
       })
       .onError((error) => {
         console.error('Player info subscription error:', error);
@@ -53,5 +66,5 @@ export function usePlayerInfoTable(conn: moduleBindings.DbConnection | null) {
     };
   }, [conn, subscription]);
 
-  return playerInfos;
+  return { playerInfos, showNameDialog, setShowNameDialog };
 }
