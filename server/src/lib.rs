@@ -1,26 +1,9 @@
-use bincode::deserialize;
-use serde::Deserialize;
 use spacetimedb::{
     rand::RngCore, Identity, ReducerContext, ScheduleAt, SpacetimeType, Table, TimeDuration,
     Timestamp,
 };
-use std::collections::HashMap;
 
-mod common;
-mod player_logic;
-
-#[derive(Deserialize)]
-struct TrigramMap {
-    trigrams: HashMap<String, Vec<String>>,
-}
-static TRIGRAM_MAP_BYTES: &[u8] = include_bytes!("../assets/trigram-words.bin");
-lazy_static::lazy_static! {
-    static ref TRIGRAM_MAP: HashMap<String, Vec<String>> = {
-        let d: TrigramMap = deserialize(TRIGRAM_MAP_BYTES)
-            .expect("Failed to deserialize trigram map");
-        d.trigrams
-    };
-}
+mod trigram;
 
 #[derive(Clone, SpacetimeType)]
 pub struct PlayerGameData {
@@ -382,18 +365,7 @@ fn init_player_events(players: &[PlayerGameData]) -> Vec<PlayerEvents> {
 
 // Helper function to check if a word is valid
 fn is_word_valid(word: &str, trigram: &str, used_words: &[String]) -> Result<(), String> {
-    if used_words.contains(&word.to_string()) {
-        return Err("Word has already been used".to_string());
-    }
-    match TRIGRAM_MAP.get(&trigram.to_uppercase()) {
-        Some(words) => {
-            if words.contains(&word.to_uppercase()) {
-                return Ok(());
-            }
-            return Err("Word not in dictionary".to_string());
-        }
-        None => return Err("Trigram not found".to_string()),
-    }
+    trigram::is_word_valid(word, trigram, used_words)
 }
 
 // Helper function to update the game state
@@ -659,12 +631,8 @@ fn pick_random_trigram_and_update(state: &mut PlayingState, ctx: &ReducerContext
     // Store example for current trigram before changing it
     store_trigram_example(state, &current_trigram, ctx);
 
-    // Filter trigrams to only those with frequency > 200 and not used yet
-    let available_trigrams: Vec<&String> = TRIGRAM_MAP
-        .iter()
-        .filter(|(t, words)| !state.used_trigrams.contains(t) && words.len() > 200)
-        .map(|(t, _)| t)
-        .collect();
+    // Get available trigrams
+    let available_trigrams = trigram::get_available_trigrams(&state.used_trigrams);
 
     if available_trigrams.is_empty() {
         panic!("Critical error: Ran out of trigrams. This should never happen.");
@@ -681,34 +649,7 @@ fn pick_random_trigram_and_update(state: &mut PlayingState, ctx: &ReducerContext
 
 // Helper function to get random long words containing a trigram
 fn get_example_words(trigram: &str, ctx: &ReducerContext) -> Vec<String> {
-    if let Some(words) = TRIGRAM_MAP.get(&trigram.to_uppercase()) {
-        // Filter for words longer than 10 characters
-        let long_words: Vec<String> = words.iter().filter(|w| w.len() > 10).cloned().collect();
-
-        if long_words.is_empty() {
-            return Vec::new();
-        }
-
-        // Get up to 3 random words
-        let mut rng = ctx.rng();
-        let mut selected_words = Vec::new();
-        let mut indices: Vec<usize> = (0..long_words.len()).collect();
-
-        // Shuffle indices
-        for i in (1..indices.len()).rev() {
-            let j = rng.next_u32() as usize % (i + 1);
-            indices.swap(i, j);
-        }
-
-        // Take up to 3 words
-        for &idx in indices.iter().take(3) {
-            selected_words.push(long_words[idx].to_uppercase());
-        }
-
-        selected_words
-    } else {
-        Vec::new()
-    }
+    trigram::get_example_words(trigram, &mut ctx.rng())
 }
 
 #[spacetimedb::reducer]
@@ -964,7 +905,6 @@ pub fn identity_disconnected(ctx: &ReducerContext) {
         ctx.db.player_info().identity().update(player_info);
     }
 }
-
 #[spacetimedb::reducer]
 pub fn update_current_word(ctx: &ReducerContext, game_id: u32, word: String) -> Result<(), String> {
     if let Some(mut game_state) = get_game_state(ctx, game_id) {
