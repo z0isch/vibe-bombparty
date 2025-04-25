@@ -5,9 +5,14 @@ import { useEffect, useRef, useState } from 'react';
 import * as moduleBindings from '../generated';
 import { setupSoundEffects } from '../soundEffects';
 
-export function useSpacetimeDB(): moduleBindings.DbConnection | null {
+export function useSpacetimeDB(): {
+  conn: moduleBindings.DbConnection | null;
+  showNameDialog: boolean;
+  setShowNameDialog: (show: boolean) => void;
+} {
   const connRef = useRef<moduleBindings.DbConnection | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [showNameDialog, setShowNameDialog] = useState(false);
 
   // Set up sound effects when connection is established
   useEffect(() => {
@@ -36,19 +41,10 @@ export function useSpacetimeDB(): moduleBindings.DbConnection | null {
               // Check if we need to register the player
               const storedIdentity = localStorage.getItem('identity');
               if (!storedIdentity || storedIdentity !== identity.toHexString()) {
-                // We need to register - prompt for username
-                let username = prompt('Enter your username:');
-                username = username || 'Player';
-                if (username) {
-                  try {
-                    // Register the player
-                    await connection.reducers.registerPlayer(username);
-                    // Store the new identity
-                    localStorage.setItem('identity', identity.toHexString());
-                  } catch (error) {
-                    console.error('Failed to register player:', error);
-                  }
-                }
+                // Store the new identity
+                localStorage.setItem('identity', identity.toHexString());
+                // Show the name dialog
+                setShowNameDialog(true);
               }
 
               setIsConnected(true);
@@ -73,5 +69,9 @@ export function useSpacetimeDB(): moduleBindings.DbConnection | null {
     };
   }, []);
 
-  return isConnected ? connRef.current : null;
+  return {
+    conn: connRef.current,
+    showNameDialog,
+    setShowNameDialog,
+  };
 }

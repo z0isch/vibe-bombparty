@@ -2,12 +2,13 @@ import { useState } from 'react';
 
 import { GameList } from './components/GameList';
 import { GameState } from './components/GameState';
+import { PlayerNameDialog } from './components/PlayerNameDialog';
 import { Game } from './generated';
 import { usePlayerInfoTable } from './hooks/usePlayerInfoTable';
 import { useSpacetimeDB } from './hooks/useSpacetimeDB';
 
 function App() {
-  const conn = useSpacetimeDB();
+  const { conn, showNameDialog, setShowNameDialog } = useSpacetimeDB();
   const playerInfos = usePlayerInfoTable(conn);
 
   // Track selected game ID, initially null (no game selected)
@@ -26,6 +27,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
+      {showNameDialog && <PlayerNameDialog conn={conn} onClose={() => setShowNameDialog(false)} />}
       <div className="max-w-4xl mx-auto">
         <header className="mb-8">
           <h1 className="text-4xl font-bold mb-4">Vibe Bombparty</h1>
