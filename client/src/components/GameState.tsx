@@ -63,6 +63,7 @@ export function GameState({ game, conn, playerInfos, onJoinGame }: GameStateProp
             turnTimeoutSeconds={gameStateTable.state.value.turnTimeoutSeconds}
             players={gameStateTable.state.value.players}
             playerInfos={playerInfos}
+            playerWins={gameStateTable.playerWins}
             conn={conn}
             onJoinGame={onJoinGame}
             isCurrentPlayer={!!getCurrentPlayer()}

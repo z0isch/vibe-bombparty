@@ -3,12 +3,14 @@ import { useEffect, useState } from 'react';
 import { DbConnection } from '../generated';
 import { PlayerGameData } from '../generated/player_game_data_type';
 import { PlayerInfoTable } from '../generated/player_info_table_type';
+import { PlayerWins } from '../generated/player_wins_type';
 
 interface SettingsProps {
   gameId: number;
   turnTimeoutSeconds: number;
   players: PlayerGameData[];
   playerInfos: PlayerInfoTable[];
+  playerWins: PlayerWins[];
   conn: DbConnection;
   onJoinGame: () => void;
   isCurrentPlayer: boolean;
@@ -19,6 +21,7 @@ export function Settings({
   turnTimeoutSeconds,
   players,
   playerInfos,
+  playerWins,
   conn,
   onJoinGame,
   isCurrentPlayer,
@@ -68,6 +71,10 @@ export function Settings({
             const playerInfo = playerInfos.find(
               (info) => info.identity.toHexString() === player.playerIdentity.toHexString()
             );
+            const playerWinCount =
+              playerWins.find(
+                (w) => w.playerIdentity.toHexString() === player.playerIdentity.toHexString()
+              )?.wins || 0;
             if (!playerInfo) return null;
 
             return (
@@ -81,6 +88,9 @@ export function Settings({
                   }`}
                 />
                 <span className="flex-grow">{playerInfo.username}</span>
+                <span className="text-yellow-400 font-medium mr-4">
+                  {playerWinCount} {playerWinCount === 1 ? 'win' : 'wins'}
+                </span>
                 <button
                   onClick={async () => {
                     try {

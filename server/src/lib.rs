@@ -207,8 +207,8 @@ fn schedule_game_start(ctx: &ReducerContext, countdown_seconds: u32, game_id: u3
 
 #[spacetimedb::reducer]
 pub fn game_countdown(ctx: &ReducerContext, arg: GameCountdownSchedule) -> Result<(), String> {
-    if let Some(game_state) = get_game_state(ctx, arg.game_id) {
-        match &game_state.state {
+    if let Some(mut game_state) = get_game_state(ctx, arg.game_id) {
+        match &mut game_state.state {
             GameState::Countdown(countdown_state) => {
                 // Clone the settings first so we don't have multiple borrows
                 let settings_clone = countdown_state.settings.clone();
@@ -244,7 +244,7 @@ pub fn game_countdown(ctx: &ReducerContext, arg: GameCountdownSchedule) -> Resul
                 };
 
                 // Pick initial random trigram
-                pick_random_trigram_and_update(&mut playing_state, ctx)?;
+                pick_random_trigram_and_update(&mut playing_state, ctx);
 
                 // Emit MyTurn event to the first player in shuffled order
                 if let Some(player_events) = playing_state
@@ -258,16 +258,9 @@ pub fn game_countdown(ctx: &ReducerContext, arg: GameCountdownSchedule) -> Resul
                 // Schedule the first turn timeout
                 schedule_turn_timeout(ctx, &playing_state, arg.game_id);
 
-                // Create new game state with playing state
-                let new_game_state = GameStateTable {
-                    game_id: arg.game_id,
-                    state: GameState::Playing(playing_state),
-                    updated_at: ctx.timestamp,
-                    player_wins: game_state.player_wins, // Preserve existing wins
-                };
-
-                // Update game state
-                update_game_state(ctx, new_game_state);
+                game_state.state = GameState::Playing(playing_state);
+                game_state.updated_at = ctx.timestamp;
+                update_game_state(ctx, game_state);
 
                 Ok(())
             }
@@ -307,64 +300,71 @@ fn is_game_over(state: &PlayingState) -> bool {
 }
 
 // Helper function to handle end of turn logic
-fn end_turn(state: &mut PlayingState, ctx: &ReducerContext, game_id: u32) {
-    // Clear current word and advance to next player
-    let current_player = &mut state.players[state.current_turn_index as usize];
-    current_player.current_word = String::new();
-
-    // Only continue the game if more than one player has lives
-    if !is_game_over(state) {
-        // Find next player with lives
-        let mut next_index = (state.current_turn_index + 1) % state.players.len() as u32;
-        while state.players[next_index as usize].lives == 0 {
-            next_index = (next_index + 1) % state.players.len() as u32;
+fn end_turn(game_state: &mut GameStateTable, ctx: &ReducerContext, game_id: u32) {
+    match &mut game_state.state {
+        GameState::Settings(_) => {
+            return;
         }
+        GameState::Countdown(_) => {
+            return;
+        }
+        GameState::Playing(state) => {
+            // Clear current word and advance to next player
+            let current_player = &mut state.players[state.current_turn_index as usize];
+            current_player.current_word = String::new();
 
-        state.current_turn_index = next_index;
-        state.turn_number += 1;
+            // Only continue the game if more than one player has lives
+            if !is_game_over(state) {
+                // Find next player with lives
+                let mut next_index = (state.current_turn_index + 1) % state.players.len() as u32;
+                while state.players[next_index as usize].lives == 0 {
+                    next_index = (next_index + 1) % state.players.len() as u32;
+                }
 
-        // Schedule timeout for the next player's turn
-        schedule_turn_timeout(ctx, state, game_id);
-    } else {
-        // Store example for the final trigram before game ends
-        let final_trigram = state.current_trigram.clone();
-        store_trigram_example(state, &final_trigram, ctx);
+                state.current_turn_index = next_index;
+                state.turn_number += 1;
 
-        // Update winner stats if there is a winner
-        if let Some(winner) = state.players.iter().find(|p| p.lives > 0) {
-            let winner_id = winner.player_identity;
+                // Schedule timeout for the next player's turn
+                schedule_turn_timeout(ctx, state, game_id);
+            } else {
+                // Store example for the final trigram before game ends
+                let final_trigram = state.current_trigram.clone();
+                store_trigram_example(state, &final_trigram, ctx);
 
-            // Get and update the game state to update wins
-            if let Some(mut game_state) = ctx.db.game_state().game_id().find(&game_id) {
-                if let Some(wins) = game_state
-                    .player_wins
-                    .iter_mut()
-                    .find(|w| w.player_identity == winner_id)
-                {
-                    wins.wins += 1;
-                } else {
-                    game_state.player_wins.push(PlayerWins {
-                        player_identity: winner_id,
-                        wins: 1,
+                // Update winner stats if there is a winner
+                if let Some(winner) = state.players.iter().find(|p| p.lives > 0) {
+                    let winner_id = winner.player_identity;
+
+                    // Get and update the game state to update wins
+                    if let Some(wins) = game_state
+                        .player_wins
+                        .iter_mut()
+                        .find(|w| w.player_identity == winner_id)
+                    {
+                        wins.wins += 1;
+                    } else {
+                        game_state.player_wins.push(PlayerWins {
+                            player_identity: winner_id,
+                            wins: 1,
+                        });
+                    }
+                }
+
+                // Emit game over events
+                let winner = state.players.iter().find(|p| p.lives > 0);
+
+                // Emit events to all players
+                for player_events in &mut state.player_events {
+                    let is_winner = winner.map_or(false, |w| {
+                        w.player_identity == player_events.player_identity
+                    });
+                    player_events.events.push(if is_winner {
+                        GameStateEvent::IWin
+                    } else {
+                        GameStateEvent::ILose
                     });
                 }
-                update_game_state(ctx, game_state);
             }
-        }
-
-        // Emit game over events
-        let winner = state.players.iter().find(|p| p.lives > 0);
-
-        // Emit events to all players
-        for player_events in &mut state.player_events {
-            let is_winner = winner.map_or(false, |w| {
-                w.player_identity == player_events.player_identity
-            });
-            player_events.events.push(if is_winner {
-                GameStateEvent::IWin
-            } else {
-                GameStateEvent::ILose
-            });
         }
     }
 }
@@ -410,220 +410,226 @@ fn make_move(
     ctx: &ReducerContext,
 ) -> Result<(), String> {
     let mut game_state = get_game_state(ctx, game_id).unwrap();
-
-    match &mut game_state.state {
-        GameState::Settings(_) => {
-            return Err("Cannot make moves while in settings state".to_string());
-        }
-        GameState::Countdown(_) => {
-            return Err("Cannot make moves during countdown".to_string());
-        }
-        GameState::Playing(state) => {
-            if state.players.is_empty() {
-                return Err("No players in game".to_string());
+    let should_end_turn = || {
+        match &mut game_state.state {
+            GameState::Settings(_) => {
+                return Err("Cannot make moves while in settings state".to_string());
             }
-
-            // Don't allow moves if game is over
-            if is_game_over(state) {
-                return Err("Game is over".to_string());
+            GameState::Countdown(_) => {
+                return Err("Cannot make moves during countdown".to_string());
             }
+            GameState::Playing(state) => {
+                if state.players.is_empty() {
+                    return Err("No players in game".to_string());
+                }
 
-            // Clear all events at the start of each move
-            state.player_events = init_player_events(&state.players);
+                // Don't allow moves if game is over
+                if is_game_over(state) {
+                    return Err("Game is over".to_string());
+                }
 
-            match game_move {
-                Move::TimeUp => {
-                    // Get current player before modifying state
-                    let current_player_id =
-                        state.players[state.current_turn_index as usize].player_identity;
+                // Clear all events at the start of each move
+                state.player_events = init_player_events(&state.players);
 
-                    // Emit TimeUp event to the current player
-                    if let Some(player_events) = state
-                        .player_events
-                        .iter_mut()
-                        .find(|pe| pe.player_identity == current_player_id)
-                    {
-                        player_events.events.push(GameStateEvent::TimeUp);
-                    }
-
-                    // Add player to failed_players list
-                    if !state.failed_players.contains(&current_player_id) {
-                        state.failed_players.push(current_player_id);
-                    }
-
-                    // Decrease lives on timeout and clear last valid guess
-                    let current_player = &mut state.players[state.current_turn_index as usize];
-                    current_player.lives = (current_player.lives - 1).max(0);
-                    current_player.last_valid_guess = String::new(); // Clear last valid guess on timeout
-
-                    // Check if all players with lives have failed with this trigram
-                    let active_players: Vec<_> = state
-                        .players
-                        .iter()
-                        .filter(|p| p.lives > 0)
-                        .map(|p| p.player_identity)
-                        .collect();
-
-                    let all_active_failed = active_players
-                        .iter()
-                        .all(|id| state.failed_players.contains(id));
-
-                    // If all active players have failed, get example words and pick a new trigram
-                    if all_active_failed {
-                        pick_random_trigram_and_update(state, ctx)?;
-                        state.failed_players.clear();
-                    }
-
-                    end_turn(state, ctx, game_id);
-
-                    // If game isn't over, emit MyTurn event to the next player
-                    if !is_game_over(state) {
-                        let next_player_id =
+                match game_move {
+                    Move::TimeUp => {
+                        // Get current player before modifying state
+                        let current_player_id =
                             state.players[state.current_turn_index as usize].player_identity;
+
+                        // Emit TimeUp event to the current player
                         if let Some(player_events) = state
                             .player_events
                             .iter_mut()
-                            .find(|pe| pe.player_identity == next_player_id)
+                            .find(|pe| pe.player_identity == current_player_id)
                         {
-                            player_events.events.push(GameStateEvent::MyTurn);
+                            player_events.events.push(GameStateEvent::TimeUp);
                         }
-                    }
-                }
-                Move::GuessWord(guess) => {
-                    // Verify it's the player's turn
-                    let current_player = &state.players[state.current_turn_index as usize];
-                    if current_player.player_identity != player_identity {
-                        return Err("Not your turn".to_string());
-                    }
 
-                    // Convert word to uppercase for checking
-                    let word = guess.word.trim().to_uppercase();
+                        // Add player to failed_players list
+                        if !state.failed_players.contains(&current_player_id) {
+                            state.failed_players.push(current_player_id);
+                        }
 
-                    // Check if word is valid
-                    match is_word_valid(&word, &state.current_trigram, &state.used_words) {
-                        Ok(()) => {
-                            // Word is valid - emit CorrectGuess event to current player
+                        // Decrease lives on timeout and clear last valid guess
+                        let current_player = &mut state.players[state.current_turn_index as usize];
+                        current_player.lives = (current_player.lives - 1).max(0);
+                        current_player.last_valid_guess = String::new(); // Clear last valid guess on timeout
+
+                        // Check if all players with lives have failed with this trigram
+                        let active_players: Vec<_> = state
+                            .players
+                            .iter()
+                            .filter(|p| p.lives > 0)
+                            .map(|p| p.player_identity)
+                            .collect();
+
+                        let all_active_failed = active_players
+                            .iter()
+                            .all(|id| state.failed_players.contains(id));
+
+                        // If all active players have failed, get example words and pick a new trigram
+                        if all_active_failed {
+                            pick_random_trigram_and_update(state, ctx);
+                            state.failed_players.clear();
+                        }
+
+                        // If game isn't over, emit MyTurn event to the next player
+                        if !is_game_over(state) {
+                            let next_player_id =
+                                state.players[state.current_turn_index as usize].player_identity;
                             if let Some(player_events) = state
                                 .player_events
                                 .iter_mut()
-                                .find(|pe| pe.player_identity == player_identity)
+                                .find(|pe| pe.player_identity == next_player_id)
                             {
-                                player_events.events.push(GameStateEvent::CorrectGuess);
+                                player_events.events.push(GameStateEvent::MyTurn);
                             }
+                        }
+                        return Ok(true);
+                    }
+                    Move::GuessWord(guess) => {
+                        // Verify it's the player's turn
+                        let current_player = &state.players[state.current_turn_index as usize];
+                        if current_player.player_identity != player_identity {
+                            return Err("Not your turn".to_string());
+                        }
 
-                            // Add word to used words list
-                            state.used_words.push(word.clone());
+                        // Convert word to uppercase for checking
+                        let word = guess.word.trim().to_uppercase();
 
-                            // Update player's used letters and last valid guess
-                            let current_player =
-                                &mut state.players[state.current_turn_index as usize];
-                            current_player.last_valid_guess = word.clone(); // Store the last valid guess
-                            for c in word.chars() {
-                                let letter = c.to_string().to_uppercase();
-                                if !current_player.used_letters.contains(&letter) {
-                                    current_player.used_letters.push(letter);
-                                }
-                            }
-
-                            // Award a random free letter if word is longer than 10 letters
-                            if word.len() > 10 {
-                                // Get all unused letters (not in used_letters or free_letters)
-                                let unused_letters: Vec<String> = ('A'..='Z')
-                                    .map(|c| c.to_string())
-                                    .filter(|letter| {
-                                        !current_player.used_letters.contains(letter)
-                                            && !current_player.free_letters.contains(letter)
-                                    })
-                                    .collect();
-
-                                // Only award a letter if there are unused ones available
-                                if !unused_letters.is_empty() {
-                                    // Pick a random unused letter
-                                    let random_index =
-                                        ctx.rng().next_u32() as usize % unused_letters.len();
-                                    let letter = unused_letters[random_index].clone();
-
-                                    // Add to free letters
-                                    current_player.free_letters.push(letter.clone());
-
-                                    // Emit FreeLetterAward event
-                                    if let Some(player_events) = state
-                                        .player_events
-                                        .iter_mut()
-                                        .find(|pe| pe.player_identity == player_identity)
-                                    {
-                                        player_events.events.push(GameStateEvent::FreeLetterAward(
-                                            FreeLetterAwardEvent { letter },
-                                        ));
-                                    }
-                                }
-                            }
-
-                            // Check if player has used all letters (a-z)
-                            let has_all_letters = ('A'..='Z').all(|c| {
-                                let letter = c.to_string();
-                                current_player.used_letters.contains(&letter)
-                                    || current_player.free_letters.contains(&letter)
-                            });
-
-                            if has_all_letters {
-                                // Award an extra life
-                                current_player.lives += 1;
-                                // Reset used letters and free letters
-                                current_player.used_letters.clear();
-                                current_player.free_letters.clear();
-                                // Emit LifeEarned event
+                        // Check if word is valid
+                        match is_word_valid(&word, &state.current_trigram, &state.used_words) {
+                            Ok(()) => {
+                                // Word is valid - emit CorrectGuess event to current player
                                 if let Some(player_events) = state
                                     .player_events
                                     .iter_mut()
                                     .find(|pe| pe.player_identity == player_identity)
                                 {
-                                    player_events.events.push(GameStateEvent::LifeEarned);
+                                    player_events.events.push(GameStateEvent::CorrectGuess);
                                 }
+
+                                // Add word to used words list
+                                state.used_words.push(word.clone());
+
+                                // Update player's used letters and last valid guess
+                                let current_player =
+                                    &mut state.players[state.current_turn_index as usize];
+                                current_player.last_valid_guess = word.clone(); // Store the last valid guess
+                                for c in word.chars() {
+                                    let letter = c.to_string().to_uppercase();
+                                    if !current_player.used_letters.contains(&letter) {
+                                        current_player.used_letters.push(letter);
+                                    }
+                                }
+
+                                // Award a random free letter if word is longer than 10 letters
+                                if word.len() > 10 {
+                                    // Get all unused letters (not in used_letters or free_letters)
+                                    let unused_letters: Vec<String> = ('A'..='Z')
+                                        .map(|c| c.to_string())
+                                        .filter(|letter| {
+                                            !current_player.used_letters.contains(letter)
+                                                && !current_player.free_letters.contains(letter)
+                                        })
+                                        .collect();
+
+                                    // Only award a letter if there are unused ones available
+                                    if !unused_letters.is_empty() {
+                                        // Pick a random unused letter
+                                        let random_index =
+                                            ctx.rng().next_u32() as usize % unused_letters.len();
+                                        let letter = unused_letters[random_index].clone();
+
+                                        // Add to free letters
+                                        current_player.free_letters.push(letter.clone());
+
+                                        // Emit FreeLetterAward event
+                                        if let Some(player_events) = state
+                                            .player_events
+                                            .iter_mut()
+                                            .find(|pe| pe.player_identity == player_identity)
+                                        {
+                                            player_events.events.push(
+                                                GameStateEvent::FreeLetterAward(
+                                                    FreeLetterAwardEvent { letter },
+                                                ),
+                                            );
+                                        }
+                                    }
+                                }
+
+                                // Check if player has used all letters (a-z)
+                                let has_all_letters = ('A'..='Z').all(|c| {
+                                    let letter = c.to_string();
+                                    current_player.used_letters.contains(&letter)
+                                        || current_player.free_letters.contains(&letter)
+                                });
+
+                                if has_all_letters {
+                                    // Award an extra life
+                                    current_player.lives += 1;
+                                    // Reset used letters and free letters
+                                    current_player.used_letters.clear();
+                                    current_player.free_letters.clear();
+                                    // Emit LifeEarned event
+                                    if let Some(player_events) = state
+                                        .player_events
+                                        .iter_mut()
+                                        .find(|pe| pe.player_identity == player_identity)
+                                    {
+                                        player_events.events.push(GameStateEvent::LifeEarned);
+                                    }
+                                }
+
+                                // Pick a new trigram on successful word
+                                pick_random_trigram_and_update(state, ctx);
+                                state.failed_players.clear();
+
+                                // If game isn't over, emit MyTurn event to the next player
+                                if !is_game_over(state) {
+                                    let next_player_id = state.players
+                                        [state.current_turn_index as usize]
+                                        .player_identity;
+                                    if let Some(player_events) = state
+                                        .player_events
+                                        .iter_mut()
+                                        .find(|pe| pe.player_identity == next_player_id)
+                                    {
+                                        player_events.events.push(GameStateEvent::MyTurn);
+                                    }
+                                }
+                                return Ok(true);
                             }
-
-                            // Pick a new trigram on successful word
-                            pick_random_trigram_and_update(state, ctx)?;
-                            state.failed_players.clear();
-
-                            end_turn(state, ctx, game_id);
-
-                            // If game isn't over, emit MyTurn event to the next player
-                            if !is_game_over(state) {
-                                let next_player_id = state.players
-                                    [state.current_turn_index as usize]
-                                    .player_identity;
+                            Err(reason) => {
                                 if let Some(player_events) = state
                                     .player_events
                                     .iter_mut()
-                                    .find(|pe| pe.player_identity == next_player_id)
+                                    .find(|pe| pe.player_identity == player_identity)
                                 {
-                                    player_events.events.push(GameStateEvent::MyTurn);
+                                    player_events.events.push(GameStateEvent::InvalidGuess(
+                                        InvalidGuessEvent { word, reason },
+                                    ));
                                 }
+                                // Clear the current word on invalid guess
+                                let current_player =
+                                    &mut state.players[state.current_turn_index as usize];
+                                current_player.current_word = String::new();
+                                // Don't advance turn, let them try again
+                                return Ok(false);
                             }
-                        }
-                        Err(reason) => {
-                            if let Some(player_events) = state
-                                .player_events
-                                .iter_mut()
-                                .find(|pe| pe.player_identity == player_identity)
-                            {
-                                player_events.events.push(GameStateEvent::InvalidGuess(
-                                    InvalidGuessEvent { word, reason },
-                                ));
-                            }
-                            // Clear the current word on invalid guess
-                            let current_player =
-                                &mut state.players[state.current_turn_index as usize];
-                            current_player.current_word = String::new();
-                            // Don't advance turn, let them try again
                         }
                     }
                 }
             }
         }
+    };
+    match should_end_turn() {
+        Ok(true) => end_turn(&mut game_state, ctx, game_id),
+        Ok(false) => (),
+        Err(e) => return Err(e),
     }
-
     update_game_state(ctx, game_state);
     Ok(())
 }
@@ -647,10 +653,7 @@ fn store_trigram_example(state: &mut PlayingState, trigram: &str, ctx: &ReducerC
 }
 
 // Helper function to pick a random trigram and update used trigrams
-fn pick_random_trigram_and_update(
-    state: &mut PlayingState,
-    ctx: &ReducerContext,
-) -> Result<(), String> {
+fn pick_random_trigram_and_update(state: &mut PlayingState, ctx: &ReducerContext) {
     // Store current trigram in a temporary variable
     let current_trigram = state.current_trigram.clone();
     // Store example for current trigram before changing it
@@ -664,7 +667,7 @@ fn pick_random_trigram_and_update(
         .collect();
 
     if available_trigrams.is_empty() {
-        return Err("Critical error: Ran out of trigrams. This should never happen.".to_string());
+        panic!("Critical error: Ran out of trigrams. This should never happen.");
     }
 
     // Pick a random trigram from available ones
@@ -674,8 +677,6 @@ fn pick_random_trigram_and_update(
     // Add the new trigram to used trigrams and update current trigram
     state.used_trigrams.push(new_trigram.clone());
     state.current_trigram = new_trigram;
-
-    Ok(())
 }
 
 // Helper function to get random long words containing a trigram
@@ -1028,8 +1029,8 @@ pub fn submit_word(ctx: &ReducerContext, game_id: u32, word: String) -> Result<(
 
 #[spacetimedb::reducer]
 pub fn restart_game(ctx: &ReducerContext, game_id: u32) -> Result<(), String> {
-    if let Some(game_state) = get_game_state(ctx, game_id) {
-        match &game_state.state {
+    if let Some(mut game_state) = get_game_state(ctx, game_id) {
+        match &mut game_state.state {
             GameState::Playing(playing_state) => {
                 // Reset all players' lives and words
                 let reset_players: Vec<PlayerGameData> = playing_state
@@ -1038,18 +1039,12 @@ pub fn restart_game(ctx: &ReducerContext, game_id: u32) -> Result<(), String> {
                     .map(|p| create_initial_player_game_data(p.player_identity))
                     .collect();
 
-                // Create new game state with settings state, preserving wins
-                let new_game_state = GameStateTable {
-                    game_id,
-                    state: GameState::Settings(SettingsState {
-                        turn_timeout_seconds: playing_state.settings.turn_timeout_seconds,
-                        players: reset_players,
-                    }),
-                    updated_at: ctx.timestamp,
-                    player_wins: game_state.player_wins, // Preserve existing wins
-                };
-
-                update_game_state(ctx, new_game_state);
+                game_state.state = GameState::Settings(SettingsState {
+                    turn_timeout_seconds: playing_state.settings.turn_timeout_seconds,
+                    players: reset_players,
+                });
+                game_state.updated_at = ctx.timestamp;
+                update_game_state(ctx, game_state);
                 Ok(())
             }
             GameState::Settings(_) => {
