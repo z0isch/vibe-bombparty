@@ -16,11 +16,9 @@ function App() {
   const handleJoinGame = async () => {
     if (!conn || selectedGame === null) return;
 
-    const username = prompt('Enter your username:');
-    if (!username) return;
-
     try {
-      await conn.reducers.registerPlayer(selectedGame.id, username);
+      // Add player to the game (registration is handled in useSpacetimeDB)
+      await conn.reducers.addPlayerToGame(selectedGame.id);
     } catch (error) {
       // Silently handle errors
     }

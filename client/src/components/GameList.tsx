@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { DbConnection, EventContext } from '../generated';
 import { Game } from '../generated/game_type';
@@ -13,6 +13,14 @@ export function GameList({ conn, onSelectGame }: GameListProps) {
   const games = useGameTable(conn);
   const [newGameName, setNewGameName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Focus input when isCreating becomes true
+  useEffect(() => {
+    if (isCreating) {
+      inputRef.current?.focus();
+    }
+  }, [isCreating]);
 
   // Watch for new games being created
   useEffect(() => {
@@ -72,9 +80,15 @@ export function GameList({ conn, onSelectGame }: GameListProps) {
             <h3 className="text-lg font-medium mb-2">Create New Game</h3>
             <div className="flex gap-2">
               <input
+                ref={inputRef}
                 type="text"
                 value={newGameName}
                 onChange={(e) => setNewGameName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && newGameName.trim()) {
+                    handleCreateGame();
+                  }
+                }}
                 placeholder="Enter game name"
                 className="flex-1 bg-gray-600 text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
               />

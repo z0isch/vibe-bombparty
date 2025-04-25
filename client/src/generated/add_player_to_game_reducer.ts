@@ -31,30 +31,30 @@ import {
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
 
-export type RegisterPlayer = {
-  username: string,
+export type AddPlayerToGame = {
+  gameId: number,
 };
 
 /**
  * A namespace for generated helper functions.
  */
-export namespace RegisterPlayer {
+export namespace AddPlayerToGame {
   /**
   * A function which returns this type represented as an AlgebraicType.
   * This function is derived from the AlgebraicType used to generate this type.
   */
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
-      new ProductTypeElement("username", AlgebraicType.createStringType()),
+      new ProductTypeElement("gameId", AlgebraicType.createU32Type()),
     ]);
   }
 
-  export function serialize(writer: BinaryWriter, value: RegisterPlayer): void {
-    RegisterPlayer.getTypeScriptAlgebraicType().serialize(writer, value);
+  export function serialize(writer: BinaryWriter, value: AddPlayerToGame): void {
+    AddPlayerToGame.getTypeScriptAlgebraicType().serialize(writer, value);
   }
 
-  export function deserialize(reader: BinaryReader): RegisterPlayer {
-    return RegisterPlayer.getTypeScriptAlgebraicType().deserialize(reader);
+  export function deserialize(reader: BinaryReader): AddPlayerToGame {
+    return AddPlayerToGame.getTypeScriptAlgebraicType().deserialize(reader);
   }
 
 }

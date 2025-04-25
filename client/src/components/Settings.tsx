@@ -24,7 +24,6 @@ export function Settings({
   isCurrentPlayer,
 }: SettingsProps) {
   const [turnTimeout, setTurnTimeout] = useState(turnTimeoutSeconds);
-
   // Keep local state in sync with prop
   useEffect(() => {
     setTurnTimeout(turnTimeoutSeconds);

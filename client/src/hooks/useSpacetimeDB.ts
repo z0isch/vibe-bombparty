@@ -29,9 +29,28 @@ export function useSpacetimeDB(): moduleBindings.DbConnection | null {
           .withToken(localStorage.getItem('token') || undefined)
           .withModuleName('vibe-bombparty')
           .onConnect(
-            (connection: moduleBindings.DbConnection, identity: Identity, token: string) => {
-              setIsConnected(true);
+            async (connection: moduleBindings.DbConnection, identity: Identity, token: string) => {
+              // Store the token
               localStorage.setItem('token', token);
+
+              // Check if we need to register the player
+              const storedIdentity = localStorage.getItem('identity');
+              if (!storedIdentity || storedIdentity !== identity.toHexString()) {
+                // We need to register - prompt for username
+                const username = prompt('Enter your username:');
+                if (username) {
+                  try {
+                    // Register the player
+                    await connection.reducers.registerPlayer(username);
+                    // Store the new identity
+                    localStorage.setItem('identity', identity.toHexString());
+                  } catch (error) {
+                    console.error('Failed to register player:', error);
+                  }
+                }
+              }
+
+              setIsConnected(true);
             }
           )
           .onDisconnect(() => {

@@ -732,6 +732,9 @@ pub fn create_game(ctx: &ReducerContext, name: String) -> Result<(), String> {
     };
     ctx.db.game_state().insert(game_state);
 
+    // Add the creator to the game
+    add_player_to_game(ctx, game.id)?;
+
     Ok(())
 }
 
@@ -802,9 +805,7 @@ fn create_initial_player_game_data(player_identity: Identity) -> PlayerGameData 
 }
 
 #[spacetimedb::reducer]
-pub fn register_player(ctx: &ReducerContext, game_id: u32, username: String) -> Result<(), String> {
-    let player = create_initial_player_game_data(ctx.sender);
-
+pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), String> {
     // Check if player info already exists
     if let Some(mut existing_player_info) = ctx.db.player_info().identity().find(&ctx.sender) {
         // Update existing player info
@@ -822,6 +823,13 @@ pub fn register_player(ctx: &ReducerContext, game_id: u32, username: String) -> 
         };
         ctx.db.player_info().insert(player_info);
     }
+
+    Ok(())
+}
+
+#[spacetimedb::reducer]
+pub fn add_player_to_game(ctx: &ReducerContext, game_id: u32) -> Result<(), String> {
+    let player = create_initial_player_game_data(ctx.sender);
 
     // Update game's player_identities list
     if let Some(mut game) = ctx.db.game().id().find(&game_id) {
