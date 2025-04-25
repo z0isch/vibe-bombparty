@@ -910,6 +910,10 @@ pub fn start_game(ctx: &ReducerContext, game_id: u32) -> Result<(), String> {
                     return Err("Cannot start game with no players".to_string());
                 }
 
+                if settings.players.len() < 2 {
+                    return Err("Cannot start game with less than 2 players".to_string());
+                }
+
                 // Start a 5 second countdown
                 let countdown_state = CountdownState {
                     countdown_seconds: 5,

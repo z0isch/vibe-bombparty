@@ -112,13 +112,24 @@ export function Settings({
         <div>
           <button
             onClick={handleStartGame}
-            className="bg-green-500 hover:bg-green-600 px-6 py-3 rounded text-lg font-medium w-full"
+            disabled={players.length < 2}
+            className={`px-6 py-3 rounded text-lg font-medium w-full ${
+              players.length < 2
+                ? 'bg-gray-500 cursor-not-allowed'
+                : 'bg-green-500 hover:bg-green-600'
+            }`}
           >
             Start Game
           </button>
           <p className="mt-2 text-sm text-gray-400">
-            Start the game with {players.length} player
-            {players.length !== 1 && 's'}
+            {players.length < 2 ? (
+              'Need at least 2 players to start the game'
+            ) : (
+              <>
+                Start the game with {players.length} player
+                {players.length !== 1 && 's'}
+              </>
+            )}
           </p>
         </div>
       )}

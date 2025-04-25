@@ -15,3 +15,5 @@
 - hardness of trigram slider
 - block if you can get the same word
 - ~show example words even when right~
+- auto join game on creation
+- show wins for current game
