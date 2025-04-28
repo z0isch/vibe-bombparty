@@ -13,6 +13,7 @@ export function GameList({ conn, onSelectGame }: GameListProps) {
   const games = useGameTable(conn);
   const [newGameName, setNewGameName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [waitingForGame, setWaitingForGame] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus input when isCreating becomes true
@@ -24,10 +25,12 @@ export function GameList({ conn, onSelectGame }: GameListProps) {
 
   // Watch for new games being created
   useEffect(() => {
+    if (!waitingForGame) return;
     const onInsert = (_ctx: EventContext, game: Game) => {
       // If we just created this game (we're in the player_identities list)
       if (game.playerIdentities.some((id) => id.toHexString() === conn.identity?.toHexString())) {
         onSelectGame(game);
+        setWaitingForGame(false);
       }
     };
 
@@ -35,12 +38,13 @@ export function GameList({ conn, onSelectGame }: GameListProps) {
     return () => {
       conn.db.game.removeOnInsert(onInsert);
     };
-  }, [conn, onSelectGame]);
+  }, [conn, onSelectGame, waitingForGame]);
 
   const handleCreateGame = async () => {
     if (!newGameName.trim()) return;
 
     try {
+      setWaitingForGame(true);
       await conn.reducers.createGame(newGameName.trim());
       setNewGameName('');
       setIsCreating(false);

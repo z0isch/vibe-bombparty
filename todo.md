@@ -6,8 +6,8 @@
 - try timestamped inputs and rollback
 - ~countdown timer for start~
 - ~shuffle players on start~
-- multiple games
-  - Add/delete games
+- ~multiple games~
+  - ~Add/delete games~
 - ~use https://www.dictionary.com/browse/proboscidean~
 - ~trigram dictionary is wrong at the end?~
 - ~highlight in gold other players long words~
@@ -17,3 +17,4 @@
 - ~show example words even when right~
 - ~auto join game on creation~
 - ~show wins for current game~
+- ~Fix going straight into a game~
