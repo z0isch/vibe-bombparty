@@ -7,9 +7,8 @@ import { Settings } from './Settings';
 
 interface GameStateProps {
   game: Game;
-  conn: DbConnection | null;
+  conn: DbConnection;
   playerInfos: PlayerInfoTable[];
-  onJoinGame: () => void;
 }
 
 // Header component to show game name consistently across states
@@ -21,10 +20,10 @@ function GameHeader({ name }: { name: string }) {
   );
 }
 
-export function GameState({ game, conn, playerInfos, onJoinGame }: GameStateProps) {
+export function GameState({ game, conn, playerInfos }: GameStateProps) {
   const gameStateTable = useGameStateTable(conn, game.id);
 
-  if (!gameStateTable?.state || !conn) return null;
+  if (!gameStateTable?.state) return null;
 
   // Helper function to get current player from game state
   const getCurrentPlayer = () => {
@@ -65,7 +64,6 @@ export function GameState({ game, conn, playerInfos, onJoinGame }: GameStateProp
             playerInfos={playerInfos}
             playerWins={gameStateTable.playerWins}
             conn={conn}
-            onJoinGame={onJoinGame}
             isCurrentPlayer={!!getCurrentPlayer()}
           />
         </div>

@@ -12,7 +12,6 @@ interface SettingsProps {
   playerInfos: PlayerInfoTable[];
   playerWins: PlayerWins[];
   conn: DbConnection;
-  onJoinGame: () => void;
   isCurrentPlayer: boolean;
 }
 
@@ -23,7 +22,6 @@ export function Settings({
   playerInfos,
   playerWins,
   conn,
-  onJoinGame,
   isCurrentPlayer,
 }: SettingsProps) {
   const [turnTimeout, setTurnTimeout] = useState(turnTimeoutSeconds);
@@ -108,7 +106,7 @@ export function Settings({
           })}
           {!isCurrentPlayer && (
             <button
-              onClick={onJoinGame}
+              onClick={() => conn.reducers.addPlayerToGame(gameId)}
               className="bg-green-500 hover:bg-green-600 px-6 py-3 rounded text-lg font-medium w-full"
             >
               Join Game

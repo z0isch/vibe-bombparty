@@ -5,7 +5,7 @@ import { Game } from '../generated/game_type';
 import { useGameTable } from '../hooks/useGameTable';
 
 interface GameListProps {
-  conn: DbConnection | null;
+  conn: DbConnection;
   onSelectGame: (game: Game) => void;
 }
 
@@ -24,8 +24,6 @@ export function GameList({ conn, onSelectGame }: GameListProps) {
 
   // Watch for new games being created
   useEffect(() => {
-    if (!conn) return;
-
     const onInsert = (_ctx: EventContext, game: Game) => {
       // If we just created this game (we're in the player_identities list)
       if (game.playerIdentities.some((id) => id.toHexString() === conn.identity?.toHexString())) {
@@ -40,7 +38,7 @@ export function GameList({ conn, onSelectGame }: GameListProps) {
   }, [conn, onSelectGame]);
 
   const handleCreateGame = async () => {
-    if (!conn || !newGameName.trim()) return;
+    if (!newGameName.trim()) return;
 
     try {
       await conn.reducers.createGame(newGameName.trim());
@@ -53,8 +51,6 @@ export function GameList({ conn, onSelectGame }: GameListProps) {
   };
 
   const handleDeleteGame = async (gameId: number) => {
-    if (!conn) return;
-
     try {
       await conn.reducers.deleteGame(gameId);
     } catch (error) {
@@ -106,7 +102,7 @@ export function GameList({ conn, onSelectGame }: GameListProps) {
         <div className="space-y-2">
           {games.map((game) => {
             const isInGame =
-              conn?.identity &&
+              conn.identity &&
               game.playerIdentities.some((id) => id.toHexString() === conn.identity.toHexString());
 
             return (

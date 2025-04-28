@@ -10,20 +10,16 @@ import { useSpacetimeDB } from './hooks/useSpacetimeDB';
 function App() {
   const conn = useSpacetimeDB();
   const { playerInfos, showNameDialog, setShowNameDialog } = usePlayerInfoTable(conn);
-
   // Track selected game ID, initially null (no game selected)
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
 
-  const handleJoinGame = async () => {
-    if (!conn || selectedGame === null) return;
-
-    try {
-      // Add player to the game (registration is handled in useSpacetimeDB)
-      await conn.reducers.addPlayerToGame(selectedGame.id);
-    } catch (error) {
-      // Silently handle errors
-    }
-  };
+  if (!conn) {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
+        <div className="text-2xl">Connecting to SpacetimeDB...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
@@ -44,12 +40,7 @@ function App() {
         {selectedGame === null ? (
           <GameList conn={conn} onSelectGame={setSelectedGame} />
         ) : (
-          <GameState
-            game={selectedGame}
-            conn={conn}
-            playerInfos={playerInfos}
-            onJoinGame={handleJoinGame}
-          />
+          <GameState game={selectedGame} conn={conn} playerInfos={playerInfos} />
         )}
       </div>
     </div>
