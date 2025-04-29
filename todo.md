@@ -18,3 +18,18 @@
 - ~auto join game on creation~
 - ~show wins for current game~
 - ~Fix going straight into a game~
+
+# Ideas
+
+## Tug of war
+
+- Both teams pick a trigram (out of n choices?) and a word for that trigram
+  - Reveal picked trigram and then have both teams submit (maybe multiple words?)
+  - Points based on length and letter usage
+  - The team needs to beat the other teams word
+  - What to do when a team uses all their letters?
+  - Should something happen if you guess the same word that the other team used?
+
+## Sliding window
+
+- After valid word, use a trigram in that word as the next one
