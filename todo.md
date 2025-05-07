@@ -18,6 +18,7 @@
 - ~auto join game on creation~
 - ~show wins for current game~
 - ~Fix going straight into a game~
+- show used word in word history also
 
 # Ideas
 
