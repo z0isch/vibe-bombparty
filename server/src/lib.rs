@@ -41,6 +41,7 @@ pub struct PlayerEvents {
 pub struct TrigramExample {
     pub trigram: String,
     pub example_words: Vec<String>,
+    pub valid_word: String, // The word that was used with this trigram
 }
 
 #[derive(Clone, SpacetimeType)]
@@ -614,9 +615,18 @@ fn get_game_state(ctx: &ReducerContext, game_id: u32) -> Option<GameStateTable> 
 // Helper function to store a trigram example
 fn store_trigram_example(state: &mut PlayingState, trigram: &str, ctx: &ReducerContext) {
     if !trigram.is_empty() {
+        // Get the last valid word used with this trigram
+        let valid_word = state
+            .players
+            .iter()
+            .find(|p| p.last_valid_guess.contains(trigram))
+            .map(|p| p.last_valid_guess.clone())
+            .unwrap_or_default();
+
         let example = TrigramExample {
             trigram: trigram.to_string(),
             example_words: get_example_words(trigram, ctx),
+            valid_word,
         };
 
         // Add to examples at the beginning

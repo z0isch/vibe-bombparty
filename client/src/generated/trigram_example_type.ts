@@ -33,6 +33,7 @@ import {
 export type TrigramExample = {
   trigram: string,
   exampleWords: string[],
+  validWord: string,
 };
 
 /**
@@ -47,6 +48,7 @@ export namespace TrigramExample {
     return AlgebraicType.createProductType([
       new ProductTypeElement("trigram", AlgebraicType.createStringType()),
       new ProductTypeElement("exampleWords", AlgebraicType.createArrayType(AlgebraicType.createStringType())),
+      new ProductTypeElement("validWord", AlgebraicType.createStringType()),
     ]);
   }
 
