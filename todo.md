@@ -34,3 +34,12 @@
 ## Sliding window
 
 - After valid word, use a trigram in that word as the next one
+
+## Survivor
+- First to use all letters wins
+- Everyone acts at the same time on the same trigram
+- No lives
+- No repeat words amongst players
+- Bonus letter on > 10 letter words
+- Bonus letter after using so many letters over the course of the game?
+
