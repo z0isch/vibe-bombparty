@@ -58,22 +58,22 @@ export class GameCountdownScheduleTableHandle {
     return this.tableCache.iter();
   }
   /**
-   * Access to the `scheduled_id` unique index on the table `game_countdown_schedule`,
+   * Access to the `scheduledId` unique index on the table `game_countdown_schedule`,
    * which allows point queries on the field of the same name
    * via the [`GameCountdownScheduleScheduledIdUnique.find`] method.
    *
    * Users are encouraged not to explicitly reference this type,
    * but to directly chain method calls,
-   * like `ctx.db.gameCountdownSchedule.scheduled_id().find(...)`.
+   * like `ctx.db.gameCountdownSchedule.scheduledId().find(...)`.
    *
-   * Get a handle on the `scheduled_id` unique index on the table `game_countdown_schedule`.
+   * Get a handle on the `scheduledId` unique index on the table `game_countdown_schedule`.
    */
-  scheduled_id = {
-    // Find the subscribed row whose `scheduled_id` column value is equal to `col_val`,
+  scheduledId = {
+    // Find the subscribed row whose `scheduledId` column value is equal to `col_val`,
     // if such a row is present in the client cache.
     find: (col_val: bigint): GameCountdownSchedule | undefined => {
       for (let row of this.tableCache.iter()) {
-        if (deepEqual(row.scheduled_id, col_val)) {
+        if (deepEqual(row.scheduledId, col_val)) {
           return row;
         }
       }

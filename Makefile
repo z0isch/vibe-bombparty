@@ -3,6 +3,12 @@
 # Default target
 all: publish-maincloud deploy-gh-pages
 
+generate-client:
+	spacetime generate --lang typescript --out-dir client/src/generated --project-path server
+
+publish-local:
+	spacetime build --project-path server && spacetime delete vibe-bombparty && spacetime publish vibe-bombparty --project-path server
+
 # Publish to SpacetimeDB maincloud
 publish-maincloud:
 	cd server && spacetime build && spacetime delete -s maincloud vibe-bombparty &&  spacetime publish -s maincloud vibe-bombparty
