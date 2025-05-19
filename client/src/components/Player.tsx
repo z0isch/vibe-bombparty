@@ -6,6 +6,7 @@ import { DbConnection } from '../generated';
 import { PlayerGameData } from '../generated/player_game_data_type';
 import { PlayerInfoTable } from '../generated/player_info_table_type';
 import { usePlayerEventMotionProps } from '../hooks/usePlayerEventMotionProps';
+import { WinCondition } from '../generated/win_condition_type';
 
 interface PlayerProps {
   player: PlayerGameData;
@@ -16,6 +17,7 @@ interface PlayerProps {
   conn: DbConnection;
   gameId: number;
   currentTrigram: string;
+  winCondition: WinCondition;
 }
 
 export function Player({
@@ -27,6 +29,7 @@ export function Player({
   conn,
   gameId,
   currentTrigram,
+  winCondition,
 }: PlayerProps) {
   const [inputWord, setInputWord] = useState(player.currentWord);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -88,22 +91,24 @@ export function Player({
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <div
-            className={`w-2 h-2 rounded-full ${
-              playerInfo.isOnline ? 'bg-green-500' : 'bg-red-500'
-            }`}
+            className={`w-2 h-2 rounded-full ${playerInfo.isOnline ? 'bg-green-500' : 'bg-red-500'
+              }`}
           />
           <p className="font-medium">{playerInfo.username}</p>
         </div>
-        <div className="flex items-center gap-1">
-          {[...Array(Math.max(3, player.lives))].map((_, i) => (
-            <Heart
-              key={i}
-              player={player}
-              isActive={i < player.lives}
-              isNewestHeart={i === player.lives - 1}
-            />
-          ))}
-        </div>
+        {/* Only show hearts if winCondition is LastPlayerStanding */}
+        {winCondition.tag === 'LastPlayerStanding' && (
+          <div className="flex items-center gap-1">
+            {[...Array(Math.max(3, player.lives))].map((_, i) => (
+              <Heart
+                key={i}
+                player={player}
+                isActive={i < player.lives}
+                isNewestHeart={i === player.lives - 1}
+              />
+            ))}
+          </div>
+        )}
       </div>
       <div className="mt-2 space-y-2">
         <input
@@ -113,8 +118,7 @@ export function Player({
           onChange={handleWordChange}
           onKeyDown={handleKeyDown}
           placeholder={!isTheirTurn && player.lastValidGuess ? player.lastValidGuess : ''}
-          className={`w-full bg-gray-700 text-white px-3 py-2 rounded min-h-[2.5rem] focus:outline-none ${
-            isTheirTurn
+          className={`w-full bg-gray-700 text-white px-3 py-2 rounded min-h-[2.5rem] focus:outline-none ${isTheirTurn
               ? inputWord.length > 10 && containsTrigram
                 ? 'ring-2 ring-yellow-400 bg-yellow-900/20' // Gold highlight for long words with trigram
                 : containsTrigram && inputWord
@@ -123,7 +127,7 @@ export function Player({
               : player.lastValidGuess.length > 10
                 ? 'ring-2 ring-yellow-400 bg-yellow-900/20 text-gray-400 cursor-not-allowed' // Gold highlight for other players' long words
                 : 'text-gray-400 cursor-not-allowed'
-          }`}
+            }`}
           disabled={!isTheirTurn || !isCurrentPlayer}
         />
         <div className="flex flex-wrap gap-1 mt-2">
@@ -198,8 +202,8 @@ function Letter({
       animate:
         letter === events.FreeLetterAward?.value.letter
           ? {
-              scale: [1, 2, 1],
-            }
+            scale: [1, 2, 1],
+          }
           : {},
     }),
     player.playerIdentity
@@ -207,13 +211,12 @@ function Letter({
 
   return (
     <motion.span
-      className={`px-1.5 py-0.5 rounded text-sm ${
-        isFree
+      className={`px-1.5 py-0.5 rounded text-sm ${isFree
           ? 'bg-yellow-900 text-yellow-300' // Gold for free letters
           : isUsed
             ? 'bg-gray-700 text-white' // Black/white for used letters
             : 'bg-gray-700 text-gray-500' // Grey for unused letters
-      }`}
+        }`}
       {...motionProps}
     >
       {letter}

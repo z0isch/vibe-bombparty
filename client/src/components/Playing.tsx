@@ -55,17 +55,14 @@ export function Playing({ playingState, playerInfos, conn, gameId }: PlayingProp
     };
   }, [playingState.turnNumber, playingState.settings.turnTimeoutSeconds]);
 
-  const isGameOver = playingState.players.filter((p) => p.lives > 0).length <= 1;
-
-  // Find the winner if game is over
-  const winner = isGameOver ? playingState.players.find((p) => p.lives > 0) : null;
-
-  // Get winner's info
-  const winnerInfo = winner
+  // Use the winner field from PlayingState
+  const winnerId = playingState.winner;
+  const winnerInfo = winnerId
     ? playerInfos.find(
-        (info) => info.identity.toHexString() === winner.playerIdentity.toHexString()
-      )
+      (info) => info.identity.toHexString() === winnerId.toHexString()
+    )
     : null;
+  const isGameOver = !!winnerId;
 
   return (
     <div className="space-y-6">
@@ -187,6 +184,7 @@ export function Playing({ playingState, playerInfos, conn, gameId }: PlayingProp
                         conn={conn}
                         onUpdateWord={handleUpdateWord}
                         currentTrigram={playingState.currentTrigram}
+                        winCondition={playingState.settings.winCondition}
                       />
                     );
                   })}

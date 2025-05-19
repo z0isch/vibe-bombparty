@@ -60,6 +60,8 @@ import { UpdateCurrentWord } from "./update_current_word_reducer.ts";
 export { UpdateCurrentWord };
 import { UpdateTurnTimeout } from "./update_turn_timeout_reducer.ts";
 export { UpdateTurnTimeout };
+import { UpdateWinCondition } from "./update_win_condition_reducer.ts";
+export { UpdateWinCondition };
 
 // Import and reexport all table handle types
 import { GameTableHandle } from "./game_table.ts";
@@ -106,6 +108,8 @@ import { TrigramExample } from "./trigram_example_type.ts";
 export { TrigramExample };
 import { TurnTimeoutSchedule } from "./turn_timeout_schedule_type.ts";
 export { TurnTimeoutSchedule };
+import { WinCondition } from "./win_condition_type.ts";
+export { WinCondition };
 
 const REMOTE_MODULE = {
   tables: {
@@ -192,6 +196,10 @@ const REMOTE_MODULE = {
       reducerName: "update_turn_timeout",
       argsType: UpdateTurnTimeout.getTypeScriptAlgebraicType(),
     },
+    update_win_condition: {
+      reducerName: "update_win_condition",
+      argsType: UpdateWinCondition.getTypeScriptAlgebraicType(),
+    },
   },
   // Constructors which are used by the DbConnectionImpl to
   // extract type information from the generated RemoteModule.
@@ -233,6 +241,7 @@ export type Reducer = never
 | { name: "TurnTimeout", args: TurnTimeout }
 | { name: "UpdateCurrentWord", args: UpdateCurrentWord }
 | { name: "UpdateTurnTimeout", args: UpdateTurnTimeout }
+| { name: "UpdateWinCondition", args: UpdateWinCondition }
 ;
 
 export class RemoteReducers {
@@ -446,6 +455,22 @@ export class RemoteReducers {
     this.connection.offReducer("update_turn_timeout", callback);
   }
 
+  updateWinCondition(gameId: number, winCondition: WinCondition) {
+    const __args = { gameId, winCondition };
+    let __writer = new BinaryWriter(1024);
+    UpdateWinCondition.getTypeScriptAlgebraicType().serialize(__writer, __args);
+    let __argsBuffer = __writer.getBuffer();
+    this.connection.callReducer("update_win_condition", __argsBuffer, this.setCallReducerFlags.updateWinConditionFlags);
+  }
+
+  onUpdateWinCondition(callback: (ctx: ReducerEventContext, gameId: number, winCondition: WinCondition) => void) {
+    this.connection.onReducer("update_win_condition", callback);
+  }
+
+  removeOnUpdateWinCondition(callback: (ctx: ReducerEventContext, gameId: number, winCondition: WinCondition) => void) {
+    this.connection.offReducer("update_win_condition", callback);
+  }
+
 }
 
 export class SetReducerFlags {
@@ -507,6 +532,11 @@ export class SetReducerFlags {
   updateTurnTimeoutFlags: CallReducerFlags = 'FullUpdate';
   updateTurnTimeout(flags: CallReducerFlags) {
     this.updateTurnTimeoutFlags = flags;
+  }
+
+  updateWinConditionFlags: CallReducerFlags = 'FullUpdate';
+  updateWinCondition(flags: CallReducerFlags) {
+    this.updateWinConditionFlags = flags;
   }
 
 }

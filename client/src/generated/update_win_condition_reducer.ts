@@ -30,39 +30,36 @@ import {
   Timestamp,
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
-import { PlayerGameData as __PlayerGameData } from "./player_game_data_type";
+
 import { WinCondition as __WinCondition } from "./win_condition_type";
 
-export type SettingsState = {
-  turnTimeoutSeconds: number,
-  players: __PlayerGameData[],
+export type UpdateWinCondition = {
+  gameId: number,
   winCondition: __WinCondition,
 };
 
 /**
  * A namespace for generated helper functions.
  */
-export namespace SettingsState {
+export namespace UpdateWinCondition {
   /**
   * A function which returns this type represented as an AlgebraicType.
   * This function is derived from the AlgebraicType used to generate this type.
   */
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
-      new ProductTypeElement("turnTimeoutSeconds", AlgebraicType.createU32Type()),
-      new ProductTypeElement("players", AlgebraicType.createArrayType(__PlayerGameData.getTypeScriptAlgebraicType())),
+      new ProductTypeElement("gameId", AlgebraicType.createU32Type()),
       new ProductTypeElement("winCondition", __WinCondition.getTypeScriptAlgebraicType()),
     ]);
   }
 
-  export function serialize(writer: BinaryWriter, value: SettingsState): void {
-    SettingsState.getTypeScriptAlgebraicType().serialize(writer, value);
+  export function serialize(writer: BinaryWriter, value: UpdateWinCondition): void {
+    UpdateWinCondition.getTypeScriptAlgebraicType().serialize(writer, value);
   }
 
-  export function deserialize(reader: BinaryReader): SettingsState {
-    return SettingsState.getTypeScriptAlgebraicType().deserialize(reader);
+  export function deserialize(reader: BinaryReader): UpdateWinCondition {
+    return UpdateWinCondition.getTypeScriptAlgebraicType().deserialize(reader);
   }
 
 }
-
 

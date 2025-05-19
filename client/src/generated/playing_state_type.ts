@@ -46,6 +46,7 @@ export type PlayingState = {
   usedWords: string[],
   usedTrigrams: string[],
   trigramExamples: __TrigramExample[],
+  winner: Identity | undefined,
 };
 
 /**
@@ -68,6 +69,7 @@ export namespace PlayingState {
       new ProductTypeElement("usedWords", AlgebraicType.createArrayType(AlgebraicType.createStringType())),
       new ProductTypeElement("usedTrigrams", AlgebraicType.createArrayType(AlgebraicType.createStringType())),
       new ProductTypeElement("trigramExamples", AlgebraicType.createArrayType(__TrigramExample.getTypeScriptAlgebraicType())),
+      new ProductTypeElement("winner", AlgebraicType.createOptionType(AlgebraicType.createIdentityType())),
     ]);
   }
 

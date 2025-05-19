@@ -65,6 +65,7 @@ export function GameState({ game, conn, playerInfos }: GameStateProps) {
             playerWins={gameStateTable.playerWins}
             conn={conn}
             isCurrentPlayer={!!getCurrentPlayer()}
+            winCondition={gameStateTable.state.value.winCondition}
           />
         </div>
       );

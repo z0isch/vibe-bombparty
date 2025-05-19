@@ -4,6 +4,7 @@ import { DbConnection } from '../generated';
 import { PlayerGameData } from '../generated/player_game_data_type';
 import { PlayerInfoTable } from '../generated/player_info_table_type';
 import { PlayerWins } from '../generated/player_wins_type';
+import { WinCondition } from '../generated/win_condition_type';
 
 interface SettingsProps {
   gameId: number;
@@ -13,6 +14,7 @@ interface SettingsProps {
   playerWins: PlayerWins[];
   conn: DbConnection;
   isCurrentPlayer: boolean;
+  winCondition: WinCondition;
 }
 
 export function Settings({
@@ -23,12 +25,17 @@ export function Settings({
   playerWins,
   conn,
   isCurrentPlayer,
+  winCondition,
 }: SettingsProps) {
   const [turnTimeout, setTurnTimeout] = useState(turnTimeoutSeconds);
+  const [selectedWinCondition, setSelectedWinCondition] = useState<WinCondition>(winCondition);
   // Keep local state in sync with prop
   useEffect(() => {
     setTurnTimeout(turnTimeoutSeconds);
   }, [turnTimeoutSeconds]);
+  useEffect(() => {
+    setSelectedWinCondition(winCondition);
+  }, [winCondition]);
   const handleStartGame = async () => {
     if (!conn) return;
     try {
@@ -59,6 +66,31 @@ export function Settings({
               className="bg-gray-700 text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 w-32"
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Win Condition
+            </label>
+            <select
+              value={selectedWinCondition.tag}
+              onChange={async (e) => {
+                const tag = e.target.value;
+                let winCond: WinCondition =
+                  tag === WinCondition.LastPlayerStanding.tag
+                    ? (WinCondition.LastPlayerStanding as any as WinCondition)
+                    : (WinCondition.UseAllLetters as any as WinCondition);
+                setSelectedWinCondition(winCond);
+                try {
+                  await conn.reducers.updateWinCondition(gameId, winCond);
+                } catch (error) {
+                  // Silently handle errors
+                }
+              }}
+              className="bg-gray-700 text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+            >
+              <option value={WinCondition.LastPlayerStanding.tag as string}>Last Player Standing (default)</option>
+              <option value={WinCondition.UseAllLetters.tag as string}>Use All Letters</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -81,9 +113,8 @@ export function Settings({
                 className="bg-gray-800 p-4 rounded flex items-center gap-2"
               >
                 <div
-                  className={`w-2 h-2 rounded-full ${
-                    playerInfo.isOnline ? 'bg-green-500' : 'bg-red-500'
-                  }`}
+                  className={`w-2 h-2 rounded-full ${playerInfo.isOnline ? 'bg-green-500' : 'bg-red-500'
+                    }`}
                 />
                 <span className="flex-grow">{playerInfo.username}</span>
                 <span className="text-yellow-400 font-medium mr-4">
@@ -120,11 +151,10 @@ export function Settings({
           <button
             onClick={handleStartGame}
             disabled={players.length < 2}
-            className={`px-6 py-3 rounded text-lg font-medium w-full ${
-              players.length < 2
-                ? 'bg-gray-500 cursor-not-allowed'
-                : 'bg-green-500 hover:bg-green-600'
-            }`}
+            className={`px-6 py-3 rounded text-lg font-medium w-full ${players.length < 2
+              ? 'bg-gray-500 cursor-not-allowed'
+              : 'bg-green-500 hover:bg-green-600'
+              }`}
           >
             Start Game
           </button>
