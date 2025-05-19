@@ -64,8 +64,26 @@ export function Playing({ playingState, playerInfos, conn, gameId }: PlayingProp
     : null;
   const isGameOver = !!winnerId;
 
+  // Display win condition label
+  let winConditionLabel = '';
+  switch (playingState.settings.winCondition.tag) {
+    case 'LastPlayerStanding':
+      winConditionLabel = 'Be the last player with lives!';
+      break;
+    case 'UseAllLetters':
+      winConditionLabel = 'First to use every letter wins!';
+      break;
+    default:
+      winConditionLabel = '';
+  }
+
   return (
     <div className="space-y-6">
+      {/* Win Condition Display */}
+      <div className="text-center py-2 bg-gray-900 rounded-lg shadow mb-2">
+        <span className="text-lg font-semibold text-blue-300">Win Condition:</span>{' '}
+        <span className="text-lg text-white">{winConditionLabel}</span>
+      </div>
       {!isGameOver && (
         <div className="flex justify-end">
           <button
