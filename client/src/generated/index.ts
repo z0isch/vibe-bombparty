@@ -92,6 +92,8 @@ import { GameStateTable } from "./game_state_table_type.ts";
 export { GameStateTable };
 import { InvalidGuessEvent } from "./invalid_guess_event_type.ts";
 export { InvalidGuessEvent };
+import { PastGuess } from "./past_guess_type.ts";
+export { PastGuess };
 import { PlayerEvents } from "./player_events_type.ts";
 export { PlayerEvents };
 import { PlayerGameData } from "./player_game_data_type.ts";

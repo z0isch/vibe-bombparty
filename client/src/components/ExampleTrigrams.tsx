@@ -2,7 +2,7 @@ interface ExampleTrigramsProps {
   trigramExamples: {
     trigram: string;
     exampleWords: string[];
-    validWord: string;
+    validWords: { word: string; roundNumber: number }[];
   }[];
 }
 
@@ -16,58 +16,61 @@ export function ExampleTrigrams({ trigramExamples }: ExampleTrigramsProps) {
   return (
     <div className="bg-blue-900/20 border border-blue-500/50 rounded-lg p-3">
       <div className="space-y-3">
-        {visibleExamples.map((example, exampleIndex) => (
-          <div
-            key={exampleIndex}
-            className="border-t border-blue-500/30 pt-3 first:border-t-0 first:pt-0"
-          >
-            <div className="text-blue-400 font-medium text-xs mb-1.5">{example.trigram}</div>
-            {example.validWord && (
-              <div className="mb-2">
-                <div className="text-green-400 text-xs font-medium mb-1">Used word:</div>
-                <a
-                  href={`https://www.merriam-webster.com/dictionary/${example.validWord.toLowerCase()}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-green-200 text-xs px-2 py-1 rounded hover:bg-green-800/40 transition-colors cursor-pointer flex items-center justify-between group"
-                >
-                  <span>{example.validWord}</span>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
+        {visibleExamples.map((example, exampleIndex) => {
+          const mostRecent =
+            example.validWords && example.validWords.length > 0 ? example.validWords[0] : null;
+          return (
+            <div
+              key={exampleIndex}
+              className="border-t border-blue-500/30 pt-3 first:border-t-0 first:pt-0"
+            >
+              <div className="text-blue-400 font-medium text-xs mb-1.5">{example.trigram}</div>
+              {mostRecent && (
+                <div className="mb-2">
+                  <a
+                    href={`https://www.merriam-webster.com/dictionary/${mostRecent.word.toLowerCase()}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-green-200 text-xs px-2 py-1 rounded hover:bg-green-800/40 transition-colors cursor-pointer flex items-center justify-between group"
                   >
-                    <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
-                    <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
-                  </svg>
-                </a>
+                    <span>{mostRecent.word}</span>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                      <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                    </svg>
+                  </a>
+                </div>
+              )}
+              <div className="flex flex-col gap-0.5">
+                {example.exampleWords.map((word, wordIndex) => (
+                  <a
+                    key={wordIndex}
+                    href={`https://www.merriam-webster.com/dictionary/${word.toLowerCase()}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-200 text-xs px-2 py-1 rounded hover:bg-blue-800/40 transition-colors cursor-pointer flex items-center justify-between group"
+                  >
+                    <span>{word}</span>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                      <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                    </svg>
+                  </a>
+                ))}
               </div>
-            )}
-            <div className="flex flex-col gap-0.5">
-              {example.exampleWords.map((word, wordIndex) => (
-                <a
-                  key={wordIndex}
-                  href={`https://www.merriam-webster.com/dictionary/${word.toLowerCase()}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-200 text-xs px-2 py-1 rounded hover:bg-blue-800/40 transition-colors cursor-pointer flex items-center justify-between group"
-                >
-                  <span>{word}</span>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
-                    <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
-                    <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
-                  </svg>
-                </a>
-              ))}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       {hasMoreExamples && (
         <div className="mt-3 pt-3 border-t border-blue-500/30 text-center">
@@ -127,58 +130,61 @@ export function ExampleTrigrams({ trigramExamples }: ExampleTrigramsProps) {
             </button>
           </div>
           <div className="space-y-4">
-            {trigramExamples.map((example, exampleIndex) => (
-              <div
-                key={exampleIndex}
-                className="border-t border-blue-500/30 pt-4 first:border-t-0 first:pt-0"
-              >
-                <div className="text-blue-400 font-medium text-sm mb-2">{example.trigram}</div>
-                {example.validWord && (
-                  <div className="mb-3">
-                    <div className="text-green-400 text-sm font-medium mb-1">Used word:</div>
-                    <a
-                      href={`https://www.merriam-webster.com/dictionary/${example.validWord.toLowerCase()}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-green-200 text-sm px-2 py-1 rounded hover:bg-green-800/40 transition-colors cursor-pointer flex items-center justify-between group"
-                    >
-                      <span>{example.validWord}</span>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
+            {trigramExamples.map((example, exampleIndex) => {
+              const mostRecent =
+                example.validWords && example.validWords.length > 0 ? example.validWords[0] : null;
+              return (
+                <div
+                  key={exampleIndex}
+                  className="border-t border-blue-500/30 pt-4 first:border-t-0 first:pt-0"
+                >
+                  <div className="text-blue-400 font-medium text-sm mb-2">{example.trigram}</div>
+                  {mostRecent && (
+                    <div className="mb-3">
+                      <a
+                        href={`https://www.merriam-webster.com/dictionary/${mostRecent.word.toLowerCase()}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-green-200 text-sm px-2 py-1 rounded hover:bg-green-800/40 transition-colors cursor-pointer flex items-center justify-between group"
                       >
-                        <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
-                        <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
-                      </svg>
-                    </a>
+                        <span>{mostRecent.word}</span>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                          <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                        </svg>
+                      </a>
+                    </div>
+                  )}
+                  <div className="flex flex-col gap-1">
+                    {example.exampleWords.map((word, wordIndex) => (
+                      <a
+                        key={wordIndex}
+                        href={`https://www.merriam-webster.com/dictionary/${word.toLowerCase()}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-200 text-sm px-2 py-1 rounded hover:bg-blue-800/40 transition-colors cursor-pointer flex items-center justify-between group"
+                      >
+                        <span>{word}</span>
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity"
+                          viewBox="0 0 20 20"
+                          fill="currentColor"
+                        >
+                          <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+                          <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+                        </svg>
+                      </a>
+                    ))}
                   </div>
-                )}
-                <div className="flex flex-col gap-1">
-                  {example.exampleWords.map((word, wordIndex) => (
-                    <a
-                      key={wordIndex}
-                      href={`https://www.merriam-webster.com/dictionary/${word.toLowerCase()}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-200 text-sm px-2 py-1 rounded hover:bg-blue-800/40 transition-colors cursor-pointer flex items-center justify-between group"
-                    >
-                      <span>{word}</span>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-3 w-3 opacity-50 group-hover:opacity-100 transition-opacity"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
-                        <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
-                      </svg>
-                    </a>
-                  ))}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>

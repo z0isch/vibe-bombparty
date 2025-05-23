@@ -30,36 +30,32 @@ import {
   Timestamp,
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
-import { PastGuess as __PastGuess } from "./past_guess_type";
-
-export type TrigramExample = {
-  trigram: string,
-  exampleWords: string[],
-  validWords: __PastGuess[],
+export type PastGuess = {
+  word: string,
+  roundNumber: number,
 };
 
 /**
  * A namespace for generated helper functions.
  */
-export namespace TrigramExample {
+export namespace PastGuess {
   /**
   * A function which returns this type represented as an AlgebraicType.
   * This function is derived from the AlgebraicType used to generate this type.
   */
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
-      new ProductTypeElement("trigram", AlgebraicType.createStringType()),
-      new ProductTypeElement("exampleWords", AlgebraicType.createArrayType(AlgebraicType.createStringType())),
-      new ProductTypeElement("validWords", AlgebraicType.createArrayType(__PastGuess.getTypeScriptAlgebraicType())),
+      new ProductTypeElement("word", AlgebraicType.createStringType()),
+      new ProductTypeElement("roundNumber", AlgebraicType.createU32Type()),
     ]);
   }
 
-  export function serialize(writer: BinaryWriter, value: TrigramExample): void {
-    TrigramExample.getTypeScriptAlgebraicType().serialize(writer, value);
+  export function serialize(writer: BinaryWriter, value: PastGuess): void {
+    PastGuess.getTypeScriptAlgebraicType().serialize(writer, value);
   }
 
-  export function deserialize(reader: BinaryReader): TrigramExample {
-    return TrigramExample.getTypeScriptAlgebraicType().deserialize(reader);
+  export function deserialize(reader: BinaryReader): PastGuess {
+    return PastGuess.getTypeScriptAlgebraicType().deserialize(reader);
   }
 
 }

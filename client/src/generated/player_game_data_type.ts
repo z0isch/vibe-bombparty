@@ -30,13 +30,15 @@ import {
   Timestamp,
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
+import { PastGuess as __PastGuess } from "./past_guess_type";
+
 export type PlayerGameData = {
   playerIdentity: Identity,
   currentWord: string,
   lives: number,
   usedLetters: string[],
   freeLetters: string[],
-  lastValidGuess: string,
+  pastGuesses: __PastGuess[],
 };
 
 /**
@@ -54,7 +56,7 @@ export namespace PlayerGameData {
       new ProductTypeElement("lives", AlgebraicType.createI32Type()),
       new ProductTypeElement("usedLetters", AlgebraicType.createArrayType(AlgebraicType.createStringType())),
       new ProductTypeElement("freeLetters", AlgebraicType.createArrayType(AlgebraicType.createStringType())),
-      new ProductTypeElement("lastValidGuess", AlgebraicType.createStringType()),
+      new ProductTypeElement("pastGuesses", AlgebraicType.createArrayType(__PastGuess.getTypeScriptAlgebraicType())),
     ]);
   }
 
