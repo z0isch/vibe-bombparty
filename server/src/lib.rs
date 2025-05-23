@@ -65,8 +65,6 @@ pub struct PlayingState {
     pub player_events: Vec<PlayerEvents>, // Events per player
     pub current_trigram: String, // Current trigram that must be contained in valid words
     pub failed_players: Vec<Identity>, // Players who have failed with the current trigram
-    pub used_words: Vec<String>, // Track words that have been used
-    pub used_trigrams: Vec<String>, // Track trigrams that have been used
     pub trigram_examples: Vec<TrigramExample>, // Last 3 trigrams and their example words
     pub winner: Option<Identity>, // The winner's identity if the game is over
 }
@@ -237,8 +235,6 @@ pub fn game_countdown(ctx: &ReducerContext, arg: GameCountdownSchedule) -> Resul
                     player_events: init_player_events(&settings_clone.players),
                     current_trigram: String::new(), // Will be set by pick_random_trigram_and_update
                     failed_players: Vec::new(),
-                    used_words: Vec::new(),
-                    used_trigrams: Vec::new(),
                     trigram_examples: Vec::new(), // Initialize empty trigram examples list
                     winner: None,
                 };
@@ -518,7 +514,7 @@ fn make_move(
                         return Err("Not your turn".to_string());
                     }
                     let word = guess.word.trim().to_uppercase();
-                    match is_word_valid(&word, &state.current_trigram, &state.used_words) {
+                    match is_word_valid(&word, &state.current_trigram, &get_used_words(state)) {
                         Ok(()) => {
                             if let Some(player_events) = state
                                 .player_events
@@ -527,7 +523,6 @@ fn make_move(
                             {
                                 player_events.events.push(GameStateEvent::CorrectGuess);
                             }
-                            state.used_words.push(word.clone());
                             let current_player =
                                 &mut state.players[state.current_turn_index as usize];
                             current_player.past_guesses.push(PastGuess {
@@ -666,8 +661,9 @@ fn pick_random_trigram_and_update(state: &mut PlayingState, ctx: &ReducerContext
     // Store example for current trigram before changing it
     store_trigram_example(state, &current_trigram, ctx);
 
-    // Get available trigrams
-    let available_trigrams = trigram::get_available_trigrams(&state.used_trigrams);
+    // Compute used trigrams from trigram_examples and current_trigram
+    let used_trigrams = get_used_trigrams(state);
+    let available_trigrams = trigram::get_available_trigrams(&used_trigrams);
 
     if available_trigrams.is_empty() {
         panic!("Critical error: Ran out of trigrams. This should never happen.");
@@ -677,14 +673,39 @@ fn pick_random_trigram_and_update(state: &mut PlayingState, ctx: &ReducerContext
     let random_index = ctx.rng().next_u32() as usize % available_trigrams.len();
     let new_trigram = available_trigrams[random_index].clone().to_uppercase();
 
-    // Add the new trigram to used trigrams and update current trigram
-    state.used_trigrams.push(new_trigram.clone());
+    // No need to push to used_trigrams; just update current_trigram
     state.current_trigram = new_trigram;
 }
 
 // Helper function to get random long words containing a trigram
 fn get_example_words(trigram: &str, ctx: &ReducerContext) -> Vec<String> {
     trigram::get_example_words(trigram, &mut ctx.rng())
+}
+
+// Helper to compute used trigrams from trigram_examples and current_trigram
+fn get_used_trigrams(state: &PlayingState) -> Vec<String> {
+    let mut trigrams: Vec<String> = state
+        .trigram_examples
+        .iter()
+        .map(|ex| ex.trigram.clone())
+        .collect();
+    if !state.current_trigram.is_empty() && !trigrams.contains(&state.current_trigram) {
+        trigrams.push(state.current_trigram.clone());
+    }
+    trigrams
+}
+
+// Helper to compute used words from all players' past_guesses
+fn get_used_words(state: &PlayingState) -> Vec<String> {
+    let mut words = Vec::new();
+    for player in &state.players {
+        for guess in &player.past_guesses {
+            if !words.contains(&guess.word) {
+                words.push(guess.word.clone());
+            }
+        }
+    }
+    words
 }
 
 #[spacetimedb::reducer]
