@@ -290,18 +290,26 @@ pub enum Move {
 }
 
 // Helper function to check if game is over (only one player has lives)
-fn is_game_over(state: &PlayingState) -> bool {
+fn has_winner(state: &PlayingState) -> Option<Identity> {
     match state.settings.win_condition {
         WinCondition::LastPlayerStanding => {
-            let players_with_lives = state.players.iter().filter(|p| p.lives > 0).count();
-            players_with_lives <= 1
+            let players_with_lives: Vec<_> = state.players.iter().filter(|p| p.lives > 0).collect();
+            if players_with_lives.len() <= 1 {
+                players_with_lives.first().map(|p| p.player_identity)
+            } else {
+                None
+            }
         }
-        WinCondition::UseAllLetters => state.players.iter().any(|p| {
-            ('A'..='Z').all(|c| {
-                let letter = c.to_string();
-                p.used_letters.contains(&letter) || p.free_letters.contains(&letter)
+        WinCondition::UseAllLetters => state
+            .players
+            .iter()
+            .find(|p| {
+                ('A'..='Z').all(|c| {
+                    let letter = c.to_string();
+                    p.used_letters.contains(&letter) || p.free_letters.contains(&letter)
+                })
             })
-        }),
+            .map(|p| p.player_identity),
     }
 }
 
@@ -318,88 +326,51 @@ fn end_turn(game_state: &mut GameStateTable, ctx: &ReducerContext, game_id: u32)
             let win_condition = state.settings.win_condition.clone();
             let current_player = &mut state.players[state.current_turn_index as usize];
             current_player.current_word = String::new();
-
-            if !is_game_over(state) {
-                // Find next player with lives (for LastPlayerStanding) or just next player (for UseAllLetters)
-                let mut next_index = (state.current_turn_index + 1) % state.players.len() as u32;
-                match win_condition {
-                    WinCondition::LastPlayerStanding => {
-                        while state.players[next_index as usize].lives == 0 {
-                            next_index = (next_index + 1) % state.players.len() as u32;
-                        }
-                    }
-                    WinCondition::UseAllLetters => {}
-                }
-                state.current_turn_index = next_index;
-                state.turn_number += 1;
-                schedule_turn_timeout(ctx, state, game_id);
-            } else {
-                // Store example for the final trigram before game ends
-                let final_trigram = state.current_trigram.clone();
-                store_trigram_example(state, &final_trigram, ctx);
-
-                match win_condition {
-                    WinCondition::LastPlayerStanding => {
-                        if let Some(winner) = state.players.iter().find(|p| p.lives > 0) {
-                            let winner_id = winner.player_identity;
-                            state.winner = Some(winner_id);
-                            if let Some(wins) = game_state
-                                .player_wins
-                                .iter_mut()
-                                .find(|w| w.player_identity == winner_id)
-                            {
-                                wins.wins += 1;
-                            } else {
-                                game_state.player_wins.push(PlayerWins {
-                                    player_identity: winner_id,
-                                    wins: 1,
-                                });
+            let winner = has_winner(state);
+            match winner {
+                None => {
+                    let next_index = match win_condition {
+                        WinCondition::LastPlayerStanding => {
+                            let mut idx =
+                                (state.current_turn_index + 1) % state.players.len() as u32;
+                            while state.players[idx as usize].lives == 0 {
+                                idx = (idx + 1) % state.players.len() as u32;
                             }
+                            idx
                         }
-                        let winner = state.players.iter().find(|p| p.lives > 0);
-                        for player_events in &mut state.player_events {
-                            let is_winner = winner.map_or(false, |w| {
-                                w.player_identity == player_events.player_identity
-                            });
-                            player_events.events.push(if is_winner {
+                        WinCondition::UseAllLetters => {
+                            (state.current_turn_index + 1) % state.players.len() as u32
+                        }
+                    };
+                    state.current_turn_index = next_index;
+                    state.turn_number += 1;
+                    schedule_turn_timeout(ctx, state, game_id);
+                }
+                Some(winner) => {
+                    // Store example for the final trigram before game ends
+                    let final_trigram = state.current_trigram.clone();
+                    store_trigram_example(state, &final_trigram, ctx);
+                    state.winner = Some(winner);
+                    if let Some(wins) = game_state
+                        .player_wins
+                        .iter_mut()
+                        .find(|w| w.player_identity == winner)
+                    {
+                        wins.wins += 1;
+                    } else {
+                        game_state.player_wins.push(PlayerWins {
+                            player_identity: winner,
+                            wins: 1,
+                        });
+                    }
+                    for player_events in &mut state.player_events {
+                        player_events
+                            .events
+                            .push(if player_events.player_identity == winner {
                                 GameStateEvent::IWin
                             } else {
                                 GameStateEvent::ILose
                             });
-                        }
-                    }
-                    WinCondition::UseAllLetters => {
-                        // Find the player who used all letters
-                        let winner = state.players.iter().find(|p| {
-                            ('A'..='Z').all(|c| {
-                                let letter = c.to_string();
-                                p.used_letters.contains(&letter) || p.free_letters.contains(&letter)
-                            })
-                        });
-                        if let Some(winner) = winner {
-                            let winner_id = winner.player_identity;
-                            state.winner = Some(winner_id);
-                            if let Some(wins) = game_state
-                                .player_wins
-                                .iter_mut()
-                                .find(|w| w.player_identity == winner_id)
-                            {
-                                wins.wins += 1;
-                            } else {
-                                game_state.player_wins.push(PlayerWins {
-                                    player_identity: winner_id,
-                                    wins: 1,
-                                });
-                            }
-                            for player_events in &mut state.player_events {
-                                let is_winner = player_events.player_identity == winner_id;
-                                player_events.events.push(if is_winner {
-                                    GameStateEvent::IWin
-                                } else {
-                                    GameStateEvent::ILose
-                                });
-                            }
-                        }
                     }
                 }
             }
@@ -448,7 +419,7 @@ fn make_move(
             if state.players.is_empty() {
                 return Err("No players in game".to_string());
             }
-            if is_game_over(state) {
+            if has_winner(state).is_some() {
                 return Err("Game is over".to_string());
             }
             state.player_events = init_player_events(&state.players);
@@ -501,7 +472,7 @@ fn make_move(
                             }
                         }
                     }
-                    if !is_game_over(state) {
+                    if has_winner(state).is_none() {
                         let next_player_id =
                             state.players[state.current_turn_index as usize].player_identity;
                         if let Some(player_events) = state
@@ -590,7 +561,7 @@ fn make_move(
                             }
                             pick_random_trigram_and_update(state, ctx);
                             state.failed_players.clear();
-                            if !is_game_over(state) {
+                            if has_winner(state).is_none() {
                                 let next_player_id = state.players
                                     [state.current_turn_index as usize]
                                     .player_identity;
