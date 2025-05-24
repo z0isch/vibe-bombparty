@@ -322,10 +322,13 @@ fn end_turn(game_state: &mut GameStateTable, ctx: &ReducerContext, game_id: u32)
             if !is_game_over(state) {
                 // Find next player with lives (for LastPlayerStanding) or just next player (for UseAllLetters)
                 let mut next_index = (state.current_turn_index + 1) % state.players.len() as u32;
-                if let WinCondition::LastPlayerStanding = win_condition {
-                    while state.players[next_index as usize].lives == 0 {
-                        next_index = (next_index + 1) % state.players.len() as u32;
+                match win_condition {
+                    WinCondition::LastPlayerStanding => {
+                        while state.players[next_index as usize].lives == 0 {
+                            next_index = (next_index + 1) % state.players.len() as u32;
+                        }
                     }
+                    WinCondition::UseAllLetters => {}
                 }
                 state.current_turn_index = next_index;
                 state.turn_number += 1;
@@ -461,37 +464,41 @@ fn make_move(
                     {
                         player_events.events.push(GameStateEvent::TimeUp);
                     }
-                    if let WinCondition::LastPlayerStanding = win_condition {
-                        if !state.failed_players.contains(&current_player_id) {
-                            state.failed_players.push(current_player_id);
+                    match win_condition {
+                        WinCondition::LastPlayerStanding => {
+                            if !state.failed_players.contains(&current_player_id) {
+                                state.failed_players.push(current_player_id);
+                            }
+                            let current_player =
+                                &mut state.players[state.current_turn_index as usize];
+                            current_player.lives = (current_player.lives - 1).max(0);
+                            current_player.past_guesses.clear();
+                            let active_players: Vec<_> = state
+                                .players
+                                .iter()
+                                .filter(|p| p.lives > 0)
+                                .map(|p| p.player_identity)
+                                .collect();
+                            let all_active_failed = active_players
+                                .iter()
+                                .all(|id| state.failed_players.contains(id));
+                            if all_active_failed {
+                                pick_random_trigram_and_update(state, ctx);
+                                state.failed_players.clear();
+                            }
                         }
-                        let current_player = &mut state.players[state.current_turn_index as usize];
-                        current_player.lives = (current_player.lives - 1).max(0);
-                        current_player.past_guesses.clear();
-                        let active_players: Vec<_> = state
-                            .players
-                            .iter()
-                            .filter(|p| p.lives > 0)
-                            .map(|p| p.player_identity)
-                            .collect();
-                        let all_active_failed = active_players
-                            .iter()
-                            .all(|id| state.failed_players.contains(id));
-                        if all_active_failed {
-                            pick_random_trigram_and_update(state, ctx);
-                            state.failed_players.clear();
-                        }
-                    } else if let WinCondition::UseAllLetters = win_condition {
-                        if !state.failed_players.contains(&current_player_id) {
-                            state.failed_players.push(current_player_id);
-                        }
-                        let all_failed = state
-                            .players
-                            .iter()
-                            .all(|p| state.failed_players.contains(&p.player_identity));
-                        if all_failed {
-                            pick_random_trigram_and_update(state, ctx);
-                            state.failed_players.clear();
+                        WinCondition::UseAllLetters => {
+                            if !state.failed_players.contains(&current_player_id) {
+                                state.failed_players.push(current_player_id);
+                            }
+                            let all_failed = state
+                                .players
+                                .iter()
+                                .all(|p| state.failed_players.contains(&p.player_identity));
+                            if all_failed {
+                                pick_random_trigram_and_update(state, ctx);
+                                state.failed_players.clear();
+                            }
                         }
                     }
                     if !is_game_over(state) {
@@ -564,19 +571,22 @@ fn make_move(
                                 current_player.used_letters.contains(&letter)
                                     || current_player.free_letters.contains(&letter)
                             });
-                            if let WinCondition::LastPlayerStanding = win_condition {
-                                if has_all_letters {
-                                    current_player.lives += 1;
-                                    current_player.used_letters.clear();
-                                    current_player.free_letters.clear();
-                                    if let Some(player_events) = state
-                                        .player_events
-                                        .iter_mut()
-                                        .find(|pe| pe.player_identity == player_identity)
-                                    {
-                                        player_events.events.push(GameStateEvent::LifeEarned);
+                            match win_condition {
+                                WinCondition::LastPlayerStanding => {
+                                    if has_all_letters {
+                                        current_player.lives += 1;
+                                        current_player.used_letters.clear();
+                                        current_player.free_letters.clear();
+                                        if let Some(player_events) = state
+                                            .player_events
+                                            .iter_mut()
+                                            .find(|pe| pe.player_identity == player_identity)
+                                        {
+                                            player_events.events.push(GameStateEvent::LifeEarned);
+                                        }
                                     }
                                 }
+                                WinCondition::UseAllLetters => {}
                             }
                             pick_random_trigram_and_update(state, ctx);
                             state.failed_players.clear();
