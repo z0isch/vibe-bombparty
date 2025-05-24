@@ -1,0 +1,10 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Guidelines for using Rust
+
+* Always prefer to use a `match` instead of an `if` statement when working with `enums`
+* Be explicit about what to do for each case of an enum and never panic
+* Never use a `mut` when you can directly return a value from pattern matching
