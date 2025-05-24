@@ -1,6 +1,6 @@
 use spacetimedb::{
-    rand::RngCore, Identity, ReducerContext, ScheduleAt, SpacetimeType, Table, TimeDuration,
-    Timestamp,
+    rand::{self, RngCore},
+    Identity, ReducerContext, ScheduleAt, SpacetimeType, Table, TimeDuration, Timestamp,
 };
 
 mod trigram;
@@ -157,26 +157,22 @@ fn schedule_turn_timeout(ctx: &ReducerContext, state: &PlayingState, game_id: u3
 
 #[spacetimedb::reducer]
 fn turn_timeout(ctx: &ReducerContext, arg: TurnTimeoutSchedule) -> Result<(), String> {
-    if let Some(game_state) = get_game_state(ctx, arg.game_id) {
-        match &game_state.state {
-            GameState::Settings(_) => {
-                Err("Cannot process turn timeout in settings state".to_string())
-            }
-            GameState::Countdown(_) => {
-                Err("Cannot process turn timeout during countdown".to_string())
-            }
+    // Protect against stale timeouts
+    match get_game_state(ctx, arg.game_id) {
+        Some(game_state) => match game_state.state {
+            GameState::Settings(_) => {}
+            GameState::Countdown(_) => {}
             GameState::Playing(playing_state) => {
-                // Only advance the turn if the timeout matches the current turn number
-                // This prevents stale timeouts from affecting newer turns
-                if playing_state.turn_number == arg.turn_number {
-                    make_move(arg.game_id, Move::TimeUp, ctx.sender, ctx)?;
+                if playing_state.turn_number != arg.turn_number {
+                    // This isn't really an error it just means that the timeout is for a stale turn
+                    return Ok(());
                 }
-                Ok(())
             }
-        }
-    } else {
-        Err("Game not initialized".to_string())
+        },
+        None => {}
     }
+
+    update_game_state_and_schedule_turn_timeout(ctx, arg.game_id, Move::TimeUp)
 }
 
 #[spacetimedb::table(name = game_countdown_schedule, scheduled(game_countdown))]
@@ -240,7 +236,7 @@ pub fn game_countdown(ctx: &ReducerContext, arg: GameCountdownSchedule) -> Resul
                 };
 
                 // Pick initial random trigram
-                pick_random_trigram_and_update(&mut playing_state, ctx);
+                pick_random_trigram_and_update(&mut playing_state, &mut ctx.rng());
 
                 // Emit MyTurn event to the first player in shuffled order
                 if let Some(player_events) = playing_state
@@ -313,14 +309,22 @@ fn has_winner(state: &PlayingState) -> Option<Identity> {
     }
 }
 
+pub enum ShouldScheduleTurnTimeout {
+    ScheduleTurnTimeout,
+    DoNotScheduleTurnTimeout,
+}
+
 // Helper function to handle end of turn logic
-fn end_turn(game_state: &mut GameStateTable, ctx: &ReducerContext, game_id: u32) {
+fn end_turn(
+    game_state: &mut GameStateTable,
+    rng: &mut impl rand::RngCore,
+) -> ShouldScheduleTurnTimeout {
     match &mut game_state.state {
         GameState::Settings(_) => {
-            return;
+            return ShouldScheduleTurnTimeout::DoNotScheduleTurnTimeout;
         }
         GameState::Countdown(_) => {
-            return;
+            return ShouldScheduleTurnTimeout::DoNotScheduleTurnTimeout;
         }
         GameState::Playing(state) => {
             let win_condition = state.settings.win_condition.clone();
@@ -344,12 +348,12 @@ fn end_turn(game_state: &mut GameStateTable, ctx: &ReducerContext, game_id: u32)
                     };
                     state.current_turn_index = next_index;
                     state.turn_number += 1;
-                    schedule_turn_timeout(ctx, state, game_id);
+                    return ShouldScheduleTurnTimeout::ScheduleTurnTimeout;
                 }
                 Some(winner) => {
                     // Store example for the final trigram before game ends
                     let final_trigram = state.current_trigram.clone();
-                    store_trigram_example(state, &final_trigram, ctx);
+                    store_trigram_example(state, &final_trigram, rng);
                     state.winner = Some(winner);
                     if let Some(wins) = game_state
                         .player_wins
@@ -372,6 +376,7 @@ fn end_turn(game_state: &mut GameStateTable, ctx: &ReducerContext, game_id: u32)
                                 GameStateEvent::ILose
                             });
                     }
+                    return ShouldScheduleTurnTimeout::DoNotScheduleTurnTimeout;
                 }
             }
         }
@@ -402,12 +407,11 @@ fn update_game_state(ctx: &ReducerContext, state: GameStateTable) {
 }
 
 fn make_move(
-    game_id: u32,
+    game_state: &mut GameStateTable,
     game_move: Move,
     player_identity: Identity,
-    ctx: &ReducerContext,
-) -> Result<(), String> {
-    let mut game_state = get_game_state(ctx, game_id).unwrap();
+    rng: &mut impl rand::RngCore,
+) -> Result<ShouldScheduleTurnTimeout, String> {
     let should_end_turn = || match &mut game_state.state {
         GameState::Settings(_) => {
             return Err("Cannot make moves while in settings state".to_string());
@@ -454,7 +458,7 @@ fn make_move(
                                 .iter()
                                 .all(|id| state.failed_players.contains(id));
                             if all_active_failed {
-                                pick_random_trigram_and_update(state, ctx);
+                                pick_random_trigram_and_update(state, rng);
                                 state.failed_players.clear();
                             }
                         }
@@ -467,7 +471,7 @@ fn make_move(
                                 .iter()
                                 .all(|p| state.failed_players.contains(&p.player_identity));
                             if all_failed {
-                                pick_random_trigram_and_update(state, ctx);
+                                pick_random_trigram_and_update(state, rng);
                                 state.failed_players.clear();
                             }
                         }
@@ -523,7 +527,7 @@ fn make_move(
                                     .collect();
                                 if !unused_letters.is_empty() {
                                     let random_index =
-                                        ctx.rng().next_u32() as usize % unused_letters.len();
+                                        rng.next_u32() as usize % unused_letters.len();
                                     let letter = unused_letters[random_index].clone();
                                     current_player.free_letters.push(letter.clone());
                                     if let Some(player_events) = state
@@ -559,7 +563,7 @@ fn make_move(
                                 }
                                 WinCondition::UseAllLetters => {}
                             }
-                            pick_random_trigram_and_update(state, ctx);
+                            pick_random_trigram_and_update(state, rng);
                             state.failed_players.clear();
                             if has_winner(state).is_none() {
                                 let next_player_id = state.players
@@ -596,12 +600,10 @@ fn make_move(
         }
     };
     match should_end_turn() {
-        Ok(true) => end_turn(&mut game_state, ctx, game_id),
-        Ok(false) => (),
+        Ok(true) => return Ok(end_turn(game_state, rng)),
+        Ok(false) => return Ok(ShouldScheduleTurnTimeout::DoNotScheduleTurnTimeout),
         Err(e) => return Err(e),
     }
-    update_game_state(ctx, game_state);
-    Ok(())
 }
 
 // Helper function to get the game state
@@ -610,7 +612,7 @@ fn get_game_state(ctx: &ReducerContext, game_id: u32) -> Option<GameStateTable> 
 }
 
 // Helper function to store a trigram example
-fn store_trigram_example(state: &mut PlayingState, trigram: &str, ctx: &ReducerContext) {
+fn store_trigram_example(state: &mut PlayingState, trigram: &str, rng: &mut impl rand::RngCore) {
     if !trigram.is_empty() {
         // Collect all PastGuess for the current round from all players
         let mut valid_words = Vec::new();
@@ -628,7 +630,7 @@ fn store_trigram_example(state: &mut PlayingState, trigram: &str, ctx: &ReducerC
         }
         let example = TrigramExample {
             trigram: trigram.to_string(),
-            example_words: get_example_words(trigram, ctx),
+            example_words: trigram::get_example_words(trigram, rng),
             valid_words,
         };
         state.trigram_examples.insert(0, example);
@@ -636,11 +638,11 @@ fn store_trigram_example(state: &mut PlayingState, trigram: &str, ctx: &ReducerC
 }
 
 // Helper function to pick a random trigram and update used trigrams
-fn pick_random_trigram_and_update(state: &mut PlayingState, ctx: &ReducerContext) {
+fn pick_random_trigram_and_update(state: &mut PlayingState, rng: &mut impl rand::RngCore) {
     // Store current trigram in a temporary variable
     let current_trigram = state.current_trigram.clone();
     // Store example for current trigram before changing it
-    store_trigram_example(state, &current_trigram, ctx);
+    store_trigram_example(state, &current_trigram, rng);
 
     // Compute used trigrams from trigram_examples and current_trigram
     let used_trigrams = get_used_trigrams(state);
@@ -651,16 +653,11 @@ fn pick_random_trigram_and_update(state: &mut PlayingState, ctx: &ReducerContext
     }
 
     // Pick a random trigram from available ones
-    let random_index = ctx.rng().next_u32() as usize % available_trigrams.len();
+    let random_index = rng.next_u32() as usize % available_trigrams.len();
     let new_trigram = available_trigrams[random_index].clone().to_uppercase();
 
     // No need to push to used_trigrams; just update current_trigram
     state.current_trigram = new_trigram;
-}
-
-// Helper function to get random long words containing a trigram
-fn get_example_words(trigram: &str, ctx: &ReducerContext) -> Vec<String> {
-    trigram::get_example_words(trigram, &mut ctx.rng())
 }
 
 // Helper to compute used trigrams from trigram_examples and current_trigram
@@ -978,31 +975,38 @@ pub fn update_current_word(ctx: &ReducerContext, game_id: u32, word: String) -> 
     }
 }
 
+fn update_game_state_and_schedule_turn_timeout(
+    ctx: &ReducerContext,
+    game_id: u32,
+    game_move: Move,
+) -> Result<(), String> {
+    match get_game_state(ctx, game_id) {
+        Some(mut game_state) => make_move(&mut game_state, game_move, ctx.sender, &mut ctx.rng())
+            .map(|should_schedule_turn_timeout| {
+                match &mut game_state.state {
+                    GameState::Settings(_) => {}
+                    GameState::Countdown(_) => {}
+                    GameState::Playing(playing_state) => match should_schedule_turn_timeout {
+                        ShouldScheduleTurnTimeout::ScheduleTurnTimeout => {
+                            schedule_turn_timeout(ctx, playing_state, game_id);
+                        }
+                        ShouldScheduleTurnTimeout::DoNotScheduleTurnTimeout => {}
+                    },
+                }
+                update_game_state(ctx, game_state);
+            }),
+
+        None => Err("Game not initialized".to_string()),
+    }
+}
+
 #[spacetimedb::reducer]
 pub fn submit_word(ctx: &ReducerContext, game_id: u32, word: String) -> Result<(), String> {
-    if let Some(game_state) = get_game_state(ctx, game_id) {
-        match &game_state.state {
-            GameState::Settings(_) => Err("Game not in playing state".to_string()),
-            GameState::Countdown(_) => Err("Cannot submit word during countdown".to_string()),
-            GameState::Playing(playing_state) => {
-                // Verify it's the player's turn
-                let current_player =
-                    &playing_state.players[playing_state.current_turn_index as usize];
-                if current_player.player_identity != ctx.sender {
-                    return Err("Not your turn".to_string());
-                }
-
-                make_move(
-                    game_id,
-                    Move::GuessWord(GuessWordMove { word }),
-                    ctx.sender,
-                    ctx,
-                )
-            }
-        }
-    } else {
-        Err("Game not initialized".to_string())
-    }
+    update_game_state_and_schedule_turn_timeout(
+        ctx,
+        game_id,
+        Move::GuessWord(GuessWordMove { word }),
+    )
 }
 
 #[spacetimedb::reducer]
