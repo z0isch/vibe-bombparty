@@ -38,10 +38,20 @@ pub struct ClassicTurnLogic {
 }
 
 #[derive(Clone, SpacetimeType)]
+pub struct SimultaneousTurnLogic {
+    // For now, no extra fields needed, but could add per-turn stats if needed
+}
+
+#[derive(Clone, Copy, SpacetimeType, PartialEq, Eq)]
+pub enum TurnLogicMode {
+    Classic,
+    Simultaneous,
+}
+
+#[derive(Clone, SpacetimeType)]
 pub enum TurnLogic {
     Classic(ClassicTurnLogic),
-    // Placeholder for future game modes
-    // Simultaneous(...),
+    Simultaneous(SimultaneousTurnLogic),
 }
 
 #[derive(Clone, SpacetimeType)]
@@ -55,6 +65,13 @@ pub struct TrigramExample {
 pub struct PlayerWins {
     pub player_identity: Identity,
     pub wins: u32,
+}
+
+#[derive(Clone, SpacetimeType)]
+pub enum GameResult {
+    Winner(Identity),
+    Draw,
+    None,
 }
 
 #[derive(Clone, SpacetimeType)]
@@ -72,7 +89,7 @@ pub struct PlayingState {
     pub settings: SettingsState, // Settings preserved from settings state
     pub current_trigram: String, // Current trigram that must be contained in valid words
     pub trigram_examples: Vec<TrigramExample>, // Last 3 trigrams and their example words
-    pub winner: Option<Identity>, // The winner's identity if the game is over
+    pub winner: GameResult,    // Winner, Draw, or None
 }
 
 #[derive(Clone, Copy, SpacetimeType)]
@@ -86,6 +103,7 @@ pub struct SettingsState {
     pub turn_timeout_seconds: u32,
     pub players: Vec<PlayerGameData>,
     pub win_condition: WinCondition,
+    pub turn_logic_mode: TurnLogicMode,
 }
 
 #[derive(Clone, SpacetimeType)]
@@ -224,32 +242,49 @@ pub fn game_countdown(ctx: &ReducerContext, arg: GameCountdownSchedule) -> Resul
                     .map(|&i| settings_clone.players[i].clone())
                     .collect();
 
-                // Create playing state with shuffled players
-                let mut playing_state = PlayingState {
-                    players: shuffled_players,
-                    turn_logic: TurnLogic::Classic(ClassicTurnLogic {
+                // Select turn logic based on settings
+                let turn_logic = match settings_clone.turn_logic_mode {
+                    TurnLogicMode::Classic => TurnLogic::Classic(ClassicTurnLogic {
                         current_turn_index: 0,
                         failed_players: Vec::new(),
                     }),
+                    TurnLogicMode::Simultaneous => {
+                        TurnLogic::Simultaneous(SimultaneousTurnLogic {})
+                    }
+                };
+
+                let mut playing_state = PlayingState {
+                    players: shuffled_players,
+                    turn_logic,
                     turn_number: 0,
                     settings: SettingsState {
                         turn_timeout_seconds: settings_clone.turn_timeout_seconds,
                         players: Vec::new(),
                         win_condition: settings_clone.win_condition,
+                        turn_logic_mode: settings_clone.turn_logic_mode,
                     },
                     current_trigram: String::new(),
                     trigram_examples: Vec::new(),
-                    winner: None,
+                    winner: GameResult::None,
                 };
 
                 // Pick initial random trigram
                 pick_random_trigram_and_update(&mut playing_state, &mut ctx.rng());
 
-                // Emit MyTurn event to the first player in shuffled order
-                playing_state
-                    .players
-                    .get_mut(0)
-                    .map(|player| player.events.push(GameStateEvent::MyTurn));
+                // Classic: Emit MyTurn event to the first player in shuffled order
+                match &playing_state.turn_logic {
+                    TurnLogic::Classic(_) => {
+                        playing_state
+                            .players
+                            .get_mut(0)
+                            .map(|player| player.events.push(GameStateEvent::MyTurn));
+                    }
+                    TurnLogic::Simultaneous(_) => {
+                        playing_state.players.iter_mut().for_each(|player| {
+                            player.events.push(GameStateEvent::MyTurn);
+                        });
+                    }
+                }
 
                 // Schedule the first turn timeout
                 schedule_turn_timeout(ctx, &playing_state, arg.game_id);
@@ -290,26 +325,28 @@ pub enum Move {
     GuessWord(GuessWordMove),
 }
 
-fn has_winner(state: &PlayingState) -> Option<Identity> {
+fn has_winner(state: &PlayingState) -> GameResult {
     match state.settings.win_condition {
         WinCondition::LastPlayerStanding => {
             let players_with_lives: Vec<_> = state.players.iter().filter(|p| p.lives > 0).collect();
-            if players_with_lives.len() <= 1 {
-                players_with_lives.first().map(|p| p.player_identity)
-            } else {
-                None
+            match players_with_lives.len() {
+                0 => GameResult::Draw,
+                1 => GameResult::Winner(players_with_lives[0].player_identity),
+                _ => GameResult::None,
             }
         }
-        WinCondition::UseAllLetters => state
-            .players
-            .iter()
-            .find(|p| {
+        WinCondition::UseAllLetters => {
+            if let Some(p) = state.players.iter().find(|p| {
                 ('A'..='Z').all(|c| {
                     let letter = c.to_string();
                     p.used_letters.contains(&letter) || p.free_letters.contains(&letter)
                 })
-            })
-            .map(|p| p.player_identity),
+            }) {
+                GameResult::Winner(p.player_identity)
+            } else {
+                GameResult::None
+            }
+        }
     }
 }
 
@@ -331,8 +368,9 @@ fn end_turn(
             return ShouldScheduleTurnTimeout::DoNotScheduleTurnTimeout;
         }
         GameState::Playing(state) => {
-            match has_winner(state) {
-                None => {
+            let result = has_winner(state);
+            match result {
+                GameResult::None => {
                     match &mut state.turn_logic {
                         TurnLogic::Classic(classic) => {
                             let (next_player, next_player_index) = state
@@ -352,14 +390,18 @@ fn end_turn(
                             classic.current_turn_index = next_player_index;
                             state.turn_number += 1;
                         }
+                        TurnLogic::Simultaneous(_) => {
+                            // In Simultaneous mode, just increment turn_number and pick new trigram
+                            state.turn_number += 1;
+                        }
                     }
                     return ShouldScheduleTurnTimeout::ScheduleTurnTimeout;
                 }
-                Some(winner) => {
+                GameResult::Winner(winner) => {
                     // Store example for the final trigram before game ends
                     let final_trigram = state.current_trigram.clone();
                     store_trigram_example(state, &final_trigram, rng);
-                    state.winner = Some(winner);
+                    state.winner = GameResult::Winner(winner);
                     match game_state
                         .player_wins
                         .iter_mut()
@@ -381,6 +423,13 @@ fn end_turn(
                         } else {
                             GameStateEvent::ILose
                         })
+                    });
+                    return ShouldScheduleTurnTimeout::DoNotScheduleTurnTimeout;
+                }
+                GameResult::Draw => {
+                    state.winner = GameResult::Draw;
+                    state.players.iter_mut().for_each(|player| {
+                        player.events.push(GameStateEvent::ILose);
                     });
                     return ShouldScheduleTurnTimeout::DoNotScheduleTurnTimeout;
                 }
@@ -417,7 +466,9 @@ fn make_move(
             if state.players.is_empty() {
                 return Err("No players in game".to_string());
             }
-            if has_winner(state).is_some() {
+            if let GameResult::None = has_winner(state) {
+                // game not over
+            } else {
                 return Err("Game is over".to_string());
             }
             let used_words = get_used_words(state);
@@ -487,8 +538,23 @@ fn make_move(
                             }
                         }
                     }
+                    TurnLogic::Simultaneous(_) => {
+                        for player in &mut state.players {
+                            player.current_word = String::new();
+                            // Penalize players who did not submit a word this round
+                            let submitted = player
+                                .past_guesses
+                                .iter()
+                                .any(|g| g.round_number == state.turn_number);
+                            if !submitted {
+                                player.lives = (player.lives - 1).max(0);
+                                player.events.push(GameStateEvent::TimeUp);
+                            }
+                        }
+                        pick_random_trigram_and_update(state, rng);
+                        return Ok(end_turn(game_state, rng));
+                    }
                 },
-
                 Move::GuessWord(guess) => {
                     match state
                         .players
@@ -500,7 +566,6 @@ fn make_move(
                         }
                         Some(player) => {
                             let word = guess.word.trim().to_uppercase();
-
                             match is_word_valid(&word, &state.current_trigram, &used_words) {
                                 Ok(()) => {
                                     player.events.push(GameStateEvent::CorrectGuess);
@@ -549,13 +614,61 @@ fn make_move(
                                         WinCondition::UseAllLetters => {}
                                     }
                                     player.current_word = String::new();
-                                    pick_random_trigram_and_update(state, rng);
+                                    // For Simultaneous, do not pick new trigram or clear failed_players here
+                                    // Check for winner after each submission
+                                    if let GameResult::Winner(winner) = has_winner(state) {
+                                        // End the game immediately if someone wins
+                                        let final_trigram = state.current_trigram.clone();
+                                        store_trigram_example(state, &final_trigram, rng);
+                                        state.winner = GameResult::Winner(winner);
+                                        match game_state
+                                            .player_wins
+                                            .iter_mut()
+                                            .find(|w| w.player_identity == winner)
+                                        {
+                                            Some(wins) => {
+                                                wins.wins += 1;
+                                            }
+                                            None => {
+                                                game_state.player_wins.push(PlayerWins {
+                                                    player_identity: winner,
+                                                    wins: 1,
+                                                });
+                                            }
+                                        }
+                                        state.players.iter_mut().for_each(|player| {
+                                            player.events.push(
+                                                if player.player_identity == winner {
+                                                    GameStateEvent::IWin
+                                                } else {
+                                                    GameStateEvent::ILose
+                                                },
+                                            )
+                                        });
+                                        return Ok(
+                                            ShouldScheduleTurnTimeout::DoNotScheduleTurnTimeout,
+                                        );
+                                    }
+                                    // For Classic, continue as before
                                     match &mut state.turn_logic {
                                         TurnLogic::Classic(classic) => {
                                             classic.failed_players.clear()
                                         }
+                                        TurnLogic::Simultaneous(_) => {
+                                            // No-op
+                                        }
                                     };
-                                    return Ok(end_turn(game_state, rng));
+                                    // For Classic, end turn after correct guess; for Simultaneous, do not end turn
+                                    match &state.turn_logic {
+                                        TurnLogic::Classic(_) => {
+                                            return Ok(end_turn(game_state, rng))
+                                        }
+                                        TurnLogic::Simultaneous(_) => {
+                                            return Ok(
+                                                ShouldScheduleTurnTimeout::DoNotScheduleTurnTimeout,
+                                            )
+                                        }
+                                    }
                                 }
                                 Err(reason) => {
                                     player.events.push(GameStateEvent::InvalidGuess(
@@ -670,6 +783,7 @@ pub fn create_game(ctx: &ReducerContext, name: String) -> Result<(), String> {
             turn_timeout_seconds: 7,
             players: Vec::new(),
             win_condition: WinCondition::LastPlayerStanding,
+            turn_logic_mode: TurnLogicMode::Classic,
         }),
         updated_at: ctx.timestamp,
         player_wins: Vec::new(), // Initialize empty wins tracking
@@ -995,6 +1109,7 @@ pub fn restart_game(ctx: &ReducerContext, game_id: u32) -> Result<(), String> {
                     turn_timeout_seconds: playing_state.settings.turn_timeout_seconds,
                     players: reset_players,
                     win_condition: playing_state.settings.win_condition.clone(),
+                    turn_logic_mode: playing_state.settings.turn_logic_mode,
                 });
                 game_state.updated_at = ctx.timestamp;
                 update_game_state(ctx, game_state);
@@ -1025,6 +1140,26 @@ pub fn update_win_condition(
                 Ok(())
             }
             _ => Err("Can only update win condition in Settings state".to_string()),
+        }
+    } else {
+        Err("Game not initialized".to_string())
+    }
+}
+
+#[spacetimedb::reducer]
+pub fn update_turn_logic_mode(
+    ctx: &ReducerContext,
+    game_id: u32,
+    turn_logic_mode: TurnLogicMode,
+) -> Result<(), String> {
+    if let Some(mut game_state) = get_game_state(ctx, game_id) {
+        match &mut game_state.state {
+            GameState::Settings(settings) => {
+                settings.turn_logic_mode = turn_logic_mode;
+                update_game_state(ctx, game_state);
+                Ok(())
+            }
+            _ => Err("Can only update turn logic mode in Settings state".to_string()),
         }
     } else {
         Err("Game not initialized".to_string())

@@ -58,6 +58,8 @@ import { TurnTimeout } from "./turn_timeout_reducer.ts";
 export { TurnTimeout };
 import { UpdateCurrentWord } from "./update_current_word_reducer.ts";
 export { UpdateCurrentWord };
+import { UpdateTurnLogicMode } from "./update_turn_logic_mode_reducer.ts";
+export { UpdateTurnLogicMode };
 import { UpdateTurnTimeout } from "./update_turn_timeout_reducer.ts";
 export { UpdateTurnTimeout };
 import { UpdateWinCondition } from "./update_win_condition_reducer.ts";
@@ -86,6 +88,8 @@ import { Game } from "./game_type.ts";
 export { Game };
 import { GameCountdownSchedule } from "./game_countdown_schedule_type.ts";
 export { GameCountdownSchedule };
+import { GameResult } from "./game_result_type.ts";
+export { GameResult };
 import { GameState } from "./game_state_type.ts";
 export { GameState };
 import { GameStateEvent } from "./game_state_event_type.ts";
@@ -106,10 +110,14 @@ import { PlayingState } from "./playing_state_type.ts";
 export { PlayingState };
 import { SettingsState } from "./settings_state_type.ts";
 export { SettingsState };
+import { SimultaneousTurnLogic } from "./simultaneous_turn_logic_type.ts";
+export { SimultaneousTurnLogic };
 import { TrigramExample } from "./trigram_example_type.ts";
 export { TrigramExample };
 import { TurnLogic } from "./turn_logic_type.ts";
 export { TurnLogic };
+import { TurnLogicMode } from "./turn_logic_mode_type.ts";
+export { TurnLogicMode };
 import { TurnTimeoutSchedule } from "./turn_timeout_schedule_type.ts";
 export { TurnTimeoutSchedule };
 import { WinCondition } from "./win_condition_type.ts";
@@ -196,6 +204,10 @@ const REMOTE_MODULE = {
       reducerName: "update_current_word",
       argsType: UpdateCurrentWord.getTypeScriptAlgebraicType(),
     },
+    update_turn_logic_mode: {
+      reducerName: "update_turn_logic_mode",
+      argsType: UpdateTurnLogicMode.getTypeScriptAlgebraicType(),
+    },
     update_turn_timeout: {
       reducerName: "update_turn_timeout",
       argsType: UpdateTurnTimeout.getTypeScriptAlgebraicType(),
@@ -244,6 +256,7 @@ export type Reducer = never
 | { name: "SubmitWord", args: SubmitWord }
 | { name: "TurnTimeout", args: TurnTimeout }
 | { name: "UpdateCurrentWord", args: UpdateCurrentWord }
+| { name: "UpdateTurnLogicMode", args: UpdateTurnLogicMode }
 | { name: "UpdateTurnTimeout", args: UpdateTurnTimeout }
 | { name: "UpdateWinCondition", args: UpdateWinCondition }
 ;
@@ -443,6 +456,22 @@ export class RemoteReducers {
     this.connection.offReducer("update_current_word", callback);
   }
 
+  updateTurnLogicMode(gameId: number, turnLogicMode: TurnLogicMode) {
+    const __args = { gameId, turnLogicMode };
+    let __writer = new BinaryWriter(1024);
+    UpdateTurnLogicMode.getTypeScriptAlgebraicType().serialize(__writer, __args);
+    let __argsBuffer = __writer.getBuffer();
+    this.connection.callReducer("update_turn_logic_mode", __argsBuffer, this.setCallReducerFlags.updateTurnLogicModeFlags);
+  }
+
+  onUpdateTurnLogicMode(callback: (ctx: ReducerEventContext, gameId: number, turnLogicMode: TurnLogicMode) => void) {
+    this.connection.onReducer("update_turn_logic_mode", callback);
+  }
+
+  removeOnUpdateTurnLogicMode(callback: (ctx: ReducerEventContext, gameId: number, turnLogicMode: TurnLogicMode) => void) {
+    this.connection.offReducer("update_turn_logic_mode", callback);
+  }
+
   updateTurnTimeout(gameId: number, seconds: number) {
     const __args = { gameId, seconds };
     let __writer = new BinaryWriter(1024);
@@ -531,6 +560,11 @@ export class SetReducerFlags {
   updateCurrentWordFlags: CallReducerFlags = 'FullUpdate';
   updateCurrentWord(flags: CallReducerFlags) {
     this.updateCurrentWordFlags = flags;
+  }
+
+  updateTurnLogicModeFlags: CallReducerFlags = 'FullUpdate';
+  updateTurnLogicMode(flags: CallReducerFlags) {
+    this.updateTurnLogicModeFlags = flags;
   }
 
   updateTurnTimeoutFlags: CallReducerFlags = 'FullUpdate';

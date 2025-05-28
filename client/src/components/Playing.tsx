@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { DbConnection } from '../generated';
+import GameResult from '../generated/game_result_type';
 import { PlayerInfoTable } from '../generated/player_info_table_type';
 import { PlayingState } from '../generated/playing_state_type';
 import { CircularCountdown } from './CircularCountdown';
@@ -55,12 +56,13 @@ export function Playing({ playingState, playerInfos, conn, gameId }: PlayingProp
     };
   }, [playingState.turnNumber, playingState.settings.turnTimeoutSeconds]);
 
-  // Use the winner field from PlayingState
-  const winnerId = playingState.winner;
-  const winnerInfo = winnerId
-    ? playerInfos.find((info) => info.identity.toHexString() === winnerId.toHexString())
-    : null;
-  const isGameOver = !!winnerId;
+  // Use the new GameResult trinary winner
+  const winner = playingState.winner;
+  const isGameOver = winner.tag !== 'None';
+  const winnerInfo =
+    winner.tag === 'Winner'
+      ? playerInfos.find((info) => info.identity.toHexString() === winner.value.toHexString())
+      : null;
 
   // Display win condition label
   let winConditionLabel = '';
@@ -95,12 +97,30 @@ export function Playing({ playingState, playerInfos, conn, gameId }: PlayingProp
       {isGameOver ? (
         <div className="text-center mb-8">
           <h2 className="text-4xl font-bold mb-4 text-yellow-400">Game Over!</h2>
-          {winnerInfo && (
+          {winner.tag === 'Winner' && winnerInfo && (
             <div className="bg-gray-800 p-6 rounded-lg shadow-lg inline-block">
               <div className="text-2xl mb-2">Winner:</div>
               <div className="text-3xl font-bold text-green-400">{winnerInfo.username}</div>
               <div className="mt-4 text-gray-400">Survived {playingState.turnNumber} turns!</div>
               {/* Show trigram examples at game over */}
+              {playingState.trigramExamples.length > 0 && (
+                <div className="mt-4">
+                  <ExampleTrigrams trigramExamples={playingState.trigramExamples} />
+                </div>
+              )}
+              <button
+                onClick={handleRestartGame}
+                className="mt-6 bg-blue-500 hover:bg-blue-600 px-6 py-3 rounded text-lg font-medium w-full"
+              >
+                Play Again
+              </button>
+            </div>
+          )}
+          {winner.tag === 'Draw' && (
+            <div className="bg-gray-800 p-6 rounded-lg shadow-lg inline-block">
+              <div className="text-2xl mb-2 text-yellow-300">It's a draw!</div>
+              <div className="text-lg text-gray-300">All players lost at the same time.</div>
+              <div className="mt-4 text-gray-400">Survived {playingState.turnNumber} turns!</div>
               {playingState.trigramExamples.length > 0 && (
                 <div className="mt-4">
                   <ExampleTrigrams trigramExamples={playingState.trigramExamples} />
@@ -192,7 +212,9 @@ export function Playing({ playingState, playerInfos, conn, gameId }: PlayingProp
                     if (playingState.turnLogic.tag === 'Classic') {
                       currentTurnIndex = playingState.turnLogic.value.currentTurnIndex;
                     }
+                    const isSimultaneous = playingState.turnLogic.tag === 'Simultaneous';
                     const isTheirTurn =
+                      isSimultaneous ||
                       playerIndex === currentTurnIndex % playingState.players.length;
 
                     return (
@@ -207,6 +229,9 @@ export function Playing({ playingState, playerInfos, conn, gameId }: PlayingProp
                         onUpdateWord={handleUpdateWord}
                         currentTrigram={playingState.currentTrigram}
                         winCondition={playingState.settings.winCondition}
+                        turnLogicMode={playingState.turnLogic}
+                        isGameOver={isGameOver}
+                        currentTurnNumber={playingState.turnNumber}
                       />
                     );
                   })}

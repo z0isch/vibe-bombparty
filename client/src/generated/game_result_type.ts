@@ -30,16 +30,14 @@ import {
   Timestamp,
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
-import { ClassicTurnLogic as __ClassicTurnLogic } from "./classic_turn_logic_type";
-import { SimultaneousTurnLogic as __SimultaneousTurnLogic } from "./simultaneous_turn_logic_type";
-
 // A namespace for generated variants and helper functions.
-export namespace TurnLogic {
+export namespace GameResult {
   // These are the generated variant types for each variant of the tagged union.
   // One type is generated per variant and will be used in the `value` field of
   // the tagged union.
-  export type Classic = { tag: "Classic", value: __ClassicTurnLogic };
-  export type Simultaneous = { tag: "Simultaneous", value: __SimultaneousTurnLogic };
+  export type Winner = { tag: "Winner", value: Identity };
+  export type Draw = { tag: "Draw" };
+  export type None = { tag: "None" };
 
   // Helper functions for constructing each variant of the tagged union.
   // ```
@@ -47,28 +45,30 @@ export namespace TurnLogic {
   // assert!(foo.tag === "A");
   // assert!(foo.value === 42);
   // ```
-  export const Classic = (value: __ClassicTurnLogic): TurnLogic => ({ tag: "Classic", value });
-  export const Simultaneous = (value: __SimultaneousTurnLogic): TurnLogic => ({ tag: "Simultaneous", value });
+  export const Winner = (value: Identity): GameResult => ({ tag: "Winner", value });
+  export const Draw = { tag: "Draw" };
+  export const None = { tag: "None" };
 
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createSumType([
-      new SumTypeVariant("Classic", __ClassicTurnLogic.getTypeScriptAlgebraicType()),
-      new SumTypeVariant("Simultaneous", __SimultaneousTurnLogic.getTypeScriptAlgebraicType()),
+      new SumTypeVariant("Winner", AlgebraicType.createIdentityType()),
+      new SumTypeVariant("Draw", AlgebraicType.createProductType([])),
+      new SumTypeVariant("None", AlgebraicType.createProductType([])),
     ]);
   }
 
-  export function serialize(writer: BinaryWriter, value: TurnLogic): void {
-      TurnLogic.getTypeScriptAlgebraicType().serialize(writer, value);
+  export function serialize(writer: BinaryWriter, value: GameResult): void {
+      GameResult.getTypeScriptAlgebraicType().serialize(writer, value);
   }
 
-  export function deserialize(reader: BinaryReader): TurnLogic {
-      return TurnLogic.getTypeScriptAlgebraicType().deserialize(reader);
+  export function deserialize(reader: BinaryReader): GameResult {
+      return GameResult.getTypeScriptAlgebraicType().deserialize(reader);
   }
 
 }
 
-// The tagged union or sum type for the algebraic type `TurnLogic`.
-export type TurnLogic = TurnLogic.Classic | TurnLogic.Simultaneous;
+// The tagged union or sum type for the algebraic type `GameResult`.
+export type GameResult = GameResult.Winner | GameResult.Draw | GameResult.None;
 
-export default TurnLogic;
+export default GameResult;
 

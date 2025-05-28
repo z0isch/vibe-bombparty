@@ -30,42 +30,36 @@ import {
   Timestamp,
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
-import { PlayerGameData as __PlayerGameData } from "./player_game_data_type";
-import { WinCondition as __WinCondition } from "./win_condition_type";
+
 import { TurnLogicMode as __TurnLogicMode } from "./turn_logic_mode_type";
 
-export type SettingsState = {
-  turnTimeoutSeconds: number,
-  players: __PlayerGameData[],
-  winCondition: __WinCondition,
+export type UpdateTurnLogicMode = {
+  gameId: number,
   turnLogicMode: __TurnLogicMode,
 };
 
 /**
  * A namespace for generated helper functions.
  */
-export namespace SettingsState {
+export namespace UpdateTurnLogicMode {
   /**
   * A function which returns this type represented as an AlgebraicType.
   * This function is derived from the AlgebraicType used to generate this type.
   */
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
-      new ProductTypeElement("turnTimeoutSeconds", AlgebraicType.createU32Type()),
-      new ProductTypeElement("players", AlgebraicType.createArrayType(__PlayerGameData.getTypeScriptAlgebraicType())),
-      new ProductTypeElement("winCondition", __WinCondition.getTypeScriptAlgebraicType()),
+      new ProductTypeElement("gameId", AlgebraicType.createU32Type()),
       new ProductTypeElement("turnLogicMode", __TurnLogicMode.getTypeScriptAlgebraicType()),
     ]);
   }
 
-  export function serialize(writer: BinaryWriter, value: SettingsState): void {
-    SettingsState.getTypeScriptAlgebraicType().serialize(writer, value);
+  export function serialize(writer: BinaryWriter, value: UpdateTurnLogicMode): void {
+    UpdateTurnLogicMode.getTypeScriptAlgebraicType().serialize(writer, value);
   }
 
-  export function deserialize(reader: BinaryReader): SettingsState {
-    return SettingsState.getTypeScriptAlgebraicType().deserialize(reader);
+  export function deserialize(reader: BinaryReader): UpdateTurnLogicMode {
+    return UpdateTurnLogicMode.getTypeScriptAlgebraicType().deserialize(reader);
   }
 
 }
-
 

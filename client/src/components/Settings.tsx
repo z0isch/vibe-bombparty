@@ -4,6 +4,7 @@ import { DbConnection } from '../generated';
 import { PlayerGameData } from '../generated/player_game_data_type';
 import { PlayerInfoTable } from '../generated/player_info_table_type';
 import { PlayerWins } from '../generated/player_wins_type';
+import TurnLogicMode from '../generated/turn_logic_mode_type';
 import { WinCondition } from '../generated/win_condition_type';
 
 interface SettingsProps {
@@ -15,6 +16,7 @@ interface SettingsProps {
   conn: DbConnection;
   isCurrentPlayer: boolean;
   winCondition: WinCondition;
+  turnLogicMode: TurnLogicMode;
 }
 
 export function Settings({
@@ -26,9 +28,11 @@ export function Settings({
   conn,
   isCurrentPlayer,
   winCondition,
+  turnLogicMode,
 }: SettingsProps) {
   const [turnTimeout, setTurnTimeout] = useState(turnTimeoutSeconds);
   const [selectedWinCondition, setSelectedWinCondition] = useState<WinCondition>(winCondition);
+  const [selectedTurnLogicMode, setSelectedTurnLogicMode] = useState<TurnLogicMode>(turnLogicMode);
   // Keep local state in sync with prop
   useEffect(() => {
     setTurnTimeout(turnTimeoutSeconds);
@@ -36,6 +40,9 @@ export function Settings({
   useEffect(() => {
     setSelectedWinCondition(winCondition);
   }, [winCondition]);
+  useEffect(() => {
+    setSelectedTurnLogicMode(turnLogicMode);
+  }, [turnLogicMode]);
   const handleStartGame = async () => {
     if (!conn) return;
     try {
@@ -44,6 +51,13 @@ export function Settings({
       // Silently handle errors
     }
   };
+
+  function getTurnLogicModeByTag(
+    tag: string
+  ): typeof TurnLogicMode.Classic | typeof TurnLogicMode.Simultaneous {
+    if (tag === TurnLogicMode.Classic.tag) return TurnLogicMode.Classic;
+    return TurnLogicMode.Simultaneous;
+  }
 
   return (
     <div className="space-y-6">
@@ -67,9 +81,7 @@ export function Settings({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Win Condition
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Win Condition</label>
             <select
               value={selectedWinCondition.tag}
               onChange={async (e) => {
@@ -87,8 +99,32 @@ export function Settings({
               }}
               className="bg-gray-700 text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
             >
-              <option value={WinCondition.LastPlayerStanding.tag as string}>Last Player Standing (default)</option>
+              <option value={WinCondition.LastPlayerStanding.tag as string}>
+                Last Player Standing (default)
+              </option>
               <option value={WinCondition.UseAllLetters.tag as string}>Use All Letters</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Turn Logic Mode</label>
+            <select
+              value={selectedTurnLogicMode.tag}
+              onChange={async (e) => {
+                const tag = e.target.value;
+                const mode = getTurnLogicModeByTag(tag) as TurnLogicMode;
+                setSelectedTurnLogicMode(mode);
+                try {
+                  await conn.reducers.updateTurnLogicMode(gameId, mode);
+                } catch (error) {
+                  // Silently handle errors
+                }
+              }}
+              className="bg-gray-700 text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+            >
+              <option value={TurnLogicMode.Classic.tag}>Classic (turn-based)</option>
+              <option value={TurnLogicMode.Simultaneous.tag}>
+                Simultaneous (all play at once)
+              </option>
             </select>
           </div>
         </div>
@@ -113,8 +149,9 @@ export function Settings({
                 className="bg-gray-800 p-4 rounded flex items-center gap-2"
               >
                 <div
-                  className={`w-2 h-2 rounded-full ${playerInfo.isOnline ? 'bg-green-500' : 'bg-red-500'
-                    }`}
+                  className={`w-2 h-2 rounded-full ${
+                    playerInfo.isOnline ? 'bg-green-500' : 'bg-red-500'
+                  }`}
                 />
                 <span className="flex-grow">{playerInfo.username}</span>
                 <span className="text-yellow-400 font-medium mr-4">
@@ -151,10 +188,11 @@ export function Settings({
           <button
             onClick={handleStartGame}
             disabled={players.length < 2}
-            className={`px-6 py-3 rounded text-lg font-medium w-full ${players.length < 2
-              ? 'bg-gray-500 cursor-not-allowed'
-              : 'bg-green-500 hover:bg-green-600'
-              }`}
+            className={`px-6 py-3 rounded text-lg font-medium w-full ${
+              players.length < 2
+                ? 'bg-gray-500 cursor-not-allowed'
+                : 'bg-green-500 hover:bg-green-600'
+            }`}
           >
             Start Game
           </button>

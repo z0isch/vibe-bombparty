@@ -66,6 +66,7 @@ export function GameState({ game, conn, playerInfos }: GameStateProps) {
             conn={conn}
             isCurrentPlayer={!!getCurrentPlayer()}
             winCondition={gameStateTable.state.value.winCondition}
+            turnLogicMode={gameStateTable.state.value.turnLogicMode}
           />
         </div>
       );

@@ -34,6 +34,7 @@ import { SettingsState as __SettingsState } from "./settings_state_type";
 import { PlayerGameData as __PlayerGameData } from "./player_game_data_type";
 import { TurnLogic as __TurnLogic } from "./turn_logic_type";
 import { TrigramExample as __TrigramExample } from "./trigram_example_type";
+import { GameResult as __GameResult } from "./game_result_type";
 
 export type PlayingState = {
   players: __PlayerGameData[],
@@ -42,7 +43,7 @@ export type PlayingState = {
   settings: __SettingsState,
   currentTrigram: string,
   trigramExamples: __TrigramExample[],
-  winner: Identity | undefined,
+  winner: __GameResult,
 };
 
 /**
@@ -61,7 +62,7 @@ export namespace PlayingState {
       new ProductTypeElement("settings", __SettingsState.getTypeScriptAlgebraicType()),
       new ProductTypeElement("currentTrigram", AlgebraicType.createStringType()),
       new ProductTypeElement("trigramExamples", AlgebraicType.createArrayType(__TrigramExample.getTypeScriptAlgebraicType())),
-      new ProductTypeElement("winner", AlgebraicType.createOptionType(AlgebraicType.createIdentityType())),
+      new ProductTypeElement("winner", __GameResult.getTypeScriptAlgebraicType()),
     ]);
   }
 

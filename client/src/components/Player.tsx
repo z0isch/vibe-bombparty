@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DbConnection } from '../generated';
 import { PlayerGameData } from '../generated/player_game_data_type';
 import { PlayerInfoTable } from '../generated/player_info_table_type';
+import TurnLogicMode from '../generated/turn_logic_mode_type';
 import { WinCondition } from '../generated/win_condition_type';
 import { usePlayerEventMotionProps } from '../hooks/usePlayerEventMotionProps';
 
@@ -18,6 +19,9 @@ interface PlayerProps {
   gameId: number;
   currentTrigram: string;
   winCondition: WinCondition;
+  turnLogicMode: TurnLogicMode;
+  isGameOver?: boolean;
+  currentTurnNumber: number;
 }
 
 export function Player({
@@ -30,6 +34,9 @@ export function Player({
   gameId,
   currentTrigram,
   winCondition,
+  turnLogicMode,
+  isGameOver,
+  currentTurnNumber,
 }: PlayerProps) {
   const [inputWord, setInputWord] = useState(player.currentWord);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -70,6 +77,13 @@ export function Player({
     }
   }, [isTheirTurn, isCurrentPlayer]);
 
+  // Clear input when a new turn starts for the current player
+  useEffect(() => {
+    if (isCurrentPlayer && isTheirTurn) {
+      setInputWord('');
+    }
+  }, [currentTurnNumber, isCurrentPlayer, isTheirTurn]);
+
   const handleWordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newWord = e.target.value;
     setInputWord(newWord);
@@ -82,6 +96,24 @@ export function Player({
       setInputWord('');
     }
   };
+
+  // In Simultaneous mode, input is enabled for current player if not game over
+  const inputEnabled =
+    turnLogicMode.tag === 'Simultaneous'
+      ? isCurrentPlayer && !isGameOver
+      : isTheirTurn && isCurrentPlayer;
+
+  // --- WORD PILLS LOGIC ---
+  let wordPills: string[] = [];
+  if (turnLogicMode.tag === 'Simultaneous') {
+    wordPills = player.pastGuesses
+      .filter((g) => g.roundNumber === currentTurnNumber)
+      .map((g) => g.word);
+  } else if (turnLogicMode.tag === 'Classic') {
+    if (player.pastGuesses.length > 0) {
+      wordPills = [player.pastGuesses[player.pastGuesses.length - 1].word];
+    }
+  }
 
   return (
     <motion.div
@@ -112,19 +144,32 @@ export function Player({
         )}
       </div>
       <div className="mt-2 space-y-2">
+        {/* WORD PILLS SECTION */}
+        {wordPills.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-1">
+            {wordPills.map((word, idx) => (
+              <span
+                key={idx}
+                className="px-3 py-1 rounded-full bg-blue-900 text-blue-200 text-sm font-semibold shadow border border-blue-700"
+              >
+                {word}
+              </span>
+            ))}
+          </div>
+        )}
         <input
           ref={inputRef}
           type="text"
-          value={isTheirTurn ? inputWord : player.currentWord}
+          value={inputEnabled ? inputWord : ''}
           onChange={handleWordChange}
           onKeyDown={handleKeyDown}
           placeholder={
-            !isTheirTurn && player.pastGuesses && player.pastGuesses.length > 0
+            !inputEnabled && player.pastGuesses && player.pastGuesses.length > 0
               ? player.pastGuesses[player.pastGuesses.length - 1].word
               : ''
           }
           className={`w-full bg-gray-700 text-white px-3 py-2 rounded min-h-[2.5rem] focus:outline-none ${
-            isTheirTurn
+            inputEnabled
               ? inputWord.length > 10 && containsTrigram
                 ? 'ring-2 ring-yellow-400 bg-yellow-900/20' // Gold highlight for long words with trigram
                 : containsTrigram && inputWord
@@ -136,7 +181,7 @@ export function Player({
                 ? 'ring-2 ring-yellow-400 bg-yellow-900/20 text-gray-400 cursor-not-allowed' // Gold highlight for other players' long words
                 : 'text-gray-400 cursor-not-allowed'
           }`}
-          disabled={!isTheirTurn || !isCurrentPlayer}
+          disabled={!inputEnabled}
         />
         <div className="flex flex-wrap gap-1 mt-2">
           {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').map((letter) => {
