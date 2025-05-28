@@ -649,26 +649,18 @@ fn make_move(
                                             ShouldScheduleTurnTimeout::DoNotScheduleTurnTimeout,
                                         );
                                     }
-                                    // For Classic, continue as before
                                     match &mut state.turn_logic {
                                         TurnLogic::Classic(classic) => {
-                                            classic.failed_players.clear()
-                                        }
-                                        TurnLogic::Simultaneous(_) => {
-                                            // No-op
-                                        }
-                                    };
-                                    // For Classic, end turn after correct guess; for Simultaneous, do not end turn
-                                    match &state.turn_logic {
-                                        TurnLogic::Classic(_) => {
-                                            return Ok(end_turn(game_state, rng))
+                                            classic.failed_players.clear();
+                                            pick_random_trigram_and_update(state, rng);
+                                            return Ok(end_turn(game_state, rng));
                                         }
                                         TurnLogic::Simultaneous(_) => {
                                             return Ok(
                                                 ShouldScheduleTurnTimeout::DoNotScheduleTurnTimeout,
                                             )
                                         }
-                                    }
+                                    };
                                 }
                                 Err(reason) => {
                                     player.events.push(GameStateEvent::InvalidGuess(
