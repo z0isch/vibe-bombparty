@@ -76,6 +76,8 @@ import { TurnTimeoutScheduleTableHandle } from "./turn_timeout_schedule_table.ts
 export { TurnTimeoutScheduleTableHandle };
 
 // Import and reexport all types
+import { ClassicTurnLogic } from "./classic_turn_logic_type.ts";
+export { ClassicTurnLogic };
 import { CountdownState } from "./countdown_state_type.ts";
 export { CountdownState };
 import { FreeLetterAwardEvent } from "./free_letter_award_event_type.ts";
@@ -106,6 +108,8 @@ import { SettingsState } from "./settings_state_type.ts";
 export { SettingsState };
 import { TrigramExample } from "./trigram_example_type.ts";
 export { TrigramExample };
+import { TurnLogic } from "./turn_logic_type.ts";
+export { TurnLogic };
 import { TurnTimeoutSchedule } from "./turn_timeout_schedule_type.ts";
 export { TurnTimeoutSchedule };
 import { WinCondition } from "./win_condition_type.ts";

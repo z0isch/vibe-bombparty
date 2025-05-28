@@ -32,15 +32,15 @@ import {
 } from "@clockworklabs/spacetimedb-sdk";
 import { SettingsState as __SettingsState } from "./settings_state_type";
 import { PlayerGameData as __PlayerGameData } from "./player_game_data_type";
+import { TurnLogic as __TurnLogic } from "./turn_logic_type";
 import { TrigramExample as __TrigramExample } from "./trigram_example_type";
 
 export type PlayingState = {
   players: __PlayerGameData[],
-  currentTurnIndex: number,
+  turnLogic: __TurnLogic,
   turnNumber: number,
   settings: __SettingsState,
   currentTrigram: string,
-  failedPlayers: Identity[],
   trigramExamples: __TrigramExample[],
   winner: Identity | undefined,
 };
@@ -56,11 +56,10 @@ export namespace PlayingState {
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createProductType([
       new ProductTypeElement("players", AlgebraicType.createArrayType(__PlayerGameData.getTypeScriptAlgebraicType())),
-      new ProductTypeElement("currentTurnIndex", AlgebraicType.createU32Type()),
+      new ProductTypeElement("turnLogic", __TurnLogic.getTypeScriptAlgebraicType()),
       new ProductTypeElement("turnNumber", AlgebraicType.createU32Type()),
       new ProductTypeElement("settings", __SettingsState.getTypeScriptAlgebraicType()),
       new ProductTypeElement("currentTrigram", AlgebraicType.createStringType()),
-      new ProductTypeElement("failedPlayers", AlgebraicType.createArrayType(AlgebraicType.createIdentityType())),
       new ProductTypeElement("trigramExamples", AlgebraicType.createArrayType(__TrigramExample.getTypeScriptAlgebraicType())),
       new ProductTypeElement("winner", AlgebraicType.createOptionType(AlgebraicType.createIdentityType())),
     ]);

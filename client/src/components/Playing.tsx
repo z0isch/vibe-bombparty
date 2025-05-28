@@ -58,9 +58,7 @@ export function Playing({ playingState, playerInfos, conn, gameId }: PlayingProp
   // Use the winner field from PlayingState
   const winnerId = playingState.winner;
   const winnerInfo = winnerId
-    ? playerInfos.find(
-      (info) => info.identity.toHexString() === winnerId.toHexString()
-    )
+    ? playerInfos.find((info) => info.identity.toHexString() === winnerId.toHexString())
     : null;
   const isGameOver = !!winnerId;
 
@@ -188,8 +186,14 @@ export function Playing({ playingState, playerInfos, conn, gameId }: PlayingProp
                     const playerIndex = playingState.players.findIndex(
                       (p) => p.playerIdentity.toHexString() === player.playerIdentity.toHexString()
                     );
+
+                    // Extract currentTurnIndex from turnLogic (Classic variant)
+                    let currentTurnIndex = 0;
+                    if (playingState.turnLogic.tag === 'Classic') {
+                      currentTurnIndex = playingState.turnLogic.value.currentTurnIndex;
+                    }
                     const isTheirTurn =
-                      playerIndex === playingState.currentTurnIndex % playingState.players.length;
+                      playerIndex === currentTurnIndex % playingState.players.length;
 
                     return (
                       <Player

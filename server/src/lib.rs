@@ -32,10 +32,16 @@ pub struct PlayerInfoTable {
 }
 
 #[derive(Clone, SpacetimeType)]
-pub enum GameState {
-    Settings(SettingsState),
-    Countdown(CountdownState),
-    Playing(PlayingState),
+pub struct ClassicTurnLogic {
+    pub current_turn_index: u32,
+    pub failed_players: Vec<Identity>,
+}
+
+#[derive(Clone, SpacetimeType)]
+pub enum TurnLogic {
+    Classic(ClassicTurnLogic),
+    // Placeholder for future game modes
+    // Simultaneous(...),
 }
 
 #[derive(Clone, SpacetimeType)]
@@ -52,13 +58,19 @@ pub struct PlayerWins {
 }
 
 #[derive(Clone, SpacetimeType)]
+pub enum GameState {
+    Settings(SettingsState),
+    Countdown(CountdownState),
+    Playing(PlayingState),
+}
+
+#[derive(Clone, SpacetimeType)]
 pub struct PlayingState {
     pub players: Vec<PlayerGameData>,
-    pub current_turn_index: u32, // Index of the current player's turn
-    pub turn_number: u32,        // Total number of turns that have occurred
+    pub turn_logic: TurnLogic, // replaces current_turn_index and failed_players
+    pub turn_number: u32,      // Total number of turns that have occurred
     pub settings: SettingsState, // Settings preserved from settings state
     pub current_trigram: String, // Current trigram that must be contained in valid words
-    pub failed_players: Vec<Identity>, // Players who have failed with the current trigram
     pub trigram_examples: Vec<TrigramExample>, // Last 3 trigrams and their example words
     pub winner: Option<Identity>, // The winner's identity if the game is over
 }
@@ -215,16 +227,18 @@ pub fn game_countdown(ctx: &ReducerContext, arg: GameCountdownSchedule) -> Resul
                 // Create playing state with shuffled players
                 let mut playing_state = PlayingState {
                     players: shuffled_players,
-                    current_turn_index: 0, // First player in shuffled list goes first
+                    turn_logic: TurnLogic::Classic(ClassicTurnLogic {
+                        current_turn_index: 0,
+                        failed_players: Vec::new(),
+                    }),
                     turn_number: 0,
                     settings: SettingsState {
                         turn_timeout_seconds: settings_clone.turn_timeout_seconds,
-                        players: Vec::new(), // Empty players list in preserved settings
+                        players: Vec::new(),
                         win_condition: settings_clone.win_condition,
                     },
-                    current_trigram: String::new(), // Will be set by pick_random_trigram_and_update
-                    failed_players: Vec::new(),
-                    trigram_examples: Vec::new(), // Initialize empty trigram examples list
+                    current_trigram: String::new(),
+                    trigram_examples: Vec::new(),
                     winner: None,
                 };
 
@@ -304,17 +318,6 @@ pub enum ShouldScheduleTurnTimeout {
     DoNotScheduleTurnTimeout,
 }
 
-fn find_next_player_index(state: &PlayingState) -> (&PlayerGameData, u32) {
-    state
-        .players
-        .iter()
-        .zip(0..)
-        .cycle()
-        .skip(state.current_turn_index as usize + 1)
-        .find(|(p, _)| p.lives > 0)
-        .unwrap()
-}
-
 // Helper function to handle end of turn logic
 fn end_turn(
     game_state: &mut GameStateTable,
@@ -330,17 +333,26 @@ fn end_turn(
         GameState::Playing(state) => {
             match has_winner(state) {
                 None => {
-                    let (next_player, next_player_index) = find_next_player_index(&state);
-
-                    let next_player_identity = next_player.player_identity;
-                    state
-                        .players
-                        .iter_mut()
-                        .find(|player| player.player_identity == next_player_identity)
-                        .map(|player| player.events.push(GameStateEvent::MyTurn));
-
-                    state.current_turn_index = next_player_index;
-                    state.turn_number += 1;
+                    match &mut state.turn_logic {
+                        TurnLogic::Classic(classic) => {
+                            let (next_player, next_player_index) = state
+                                .players
+                                .iter()
+                                .zip(0..)
+                                .cycle()
+                                .skip(classic.current_turn_index as usize + 1)
+                                .find(|(p, _)| p.lives > 0)
+                                .unwrap();
+                            let next_player_identity = next_player.player_identity;
+                            state
+                                .players
+                                .iter_mut()
+                                .find(|player| player.player_identity == next_player_identity)
+                                .map(|player| player.events.push(GameStateEvent::MyTurn));
+                            classic.current_turn_index = next_player_index;
+                            state.turn_number += 1;
+                        }
+                    }
                     return ShouldScheduleTurnTimeout::ScheduleTurnTimeout;
                 }
                 Some(winner) => {
@@ -413,59 +425,70 @@ fn make_move(
                 player.events.clear();
             });
             match game_move {
-                Move::TimeUp => {
-                    let current_player_identity =
-                        state.players[state.current_turn_index as usize].player_identity;
-                    match state
-                        .players
-                        .iter_mut()
-                        .find(|p| p.player_identity == current_player_identity)
-                    {
-                        None => {
-                            return Err("Player not found".to_string());
-                        }
-                        Some(player) => {
-                            player.current_word = String::new();
-                            player.events.push(GameStateEvent::TimeUp);
-                            match state.settings.win_condition {
-                                WinCondition::LastPlayerStanding => {
-                                    if !state.failed_players.contains(&current_player_identity) {
-                                        state.failed_players.push(current_player_identity);
-                                    }
-                                    player.lives = (player.lives - 1).max(0);
-                                    player.past_guesses.clear();
-                                    let active_players: Vec<_> = state
-                                        .players
-                                        .iter()
-                                        .filter(|p| p.lives > 0)
-                                        .map(|p| p.player_identity)
-                                        .collect();
-                                    let all_active_failed = active_players
-                                        .iter()
-                                        .all(|id| state.failed_players.contains(id));
-                                    if all_active_failed {
-                                        pick_random_trigram_and_update(state, rng);
-                                        state.failed_players.clear();
-                                    }
-                                }
-                                WinCondition::UseAllLetters => {
-                                    if !state.failed_players.contains(&current_player_identity) {
-                                        state.failed_players.push(current_player_identity);
-                                    }
-                                    let all_failed = state
-                                        .players
-                                        .iter()
-                                        .all(|p| state.failed_players.contains(&p.player_identity));
-                                    if all_failed {
-                                        pick_random_trigram_and_update(state, rng);
-                                        state.failed_players.clear();
-                                    }
-                                }
+                Move::TimeUp => match &mut state.turn_logic {
+                    TurnLogic::Classic(classic) => {
+                        let current_player_identity =
+                            state.players[classic.current_turn_index as usize].player_identity;
+                        match state
+                            .players
+                            .iter_mut()
+                            .find(|p| p.player_identity == current_player_identity)
+                        {
+                            None => {
+                                return Err("Player not found".to_string());
                             }
-                            return Ok(end_turn(game_state, rng));
+                            Some(player) => {
+                                player.current_word = String::new();
+                                player.events.push(GameStateEvent::TimeUp);
+                                let pick_new_trigram = match state.settings.win_condition {
+                                    WinCondition::LastPlayerStanding => {
+                                        if !classic
+                                            .failed_players
+                                            .contains(&current_player_identity)
+                                        {
+                                            classic.failed_players.push(current_player_identity);
+                                        }
+                                        player.lives = (player.lives - 1).max(0);
+                                        player.past_guesses.clear();
+                                        let active_players: Vec<_> = state
+                                            .players
+                                            .iter()
+                                            .filter(|p| p.lives > 0)
+                                            .map(|p| p.player_identity)
+                                            .collect();
+                                        let all_active_failed = active_players
+                                            .iter()
+                                            .all(|id| classic.failed_players.contains(id));
+                                        if all_active_failed {
+                                            classic.failed_players.clear();
+                                        }
+                                        all_active_failed
+                                    }
+                                    WinCondition::UseAllLetters => {
+                                        if !classic
+                                            .failed_players
+                                            .contains(&current_player_identity)
+                                        {
+                                            classic.failed_players.push(current_player_identity)
+                                        }
+                                        let all_failed = state.players.iter().all(|p| {
+                                            classic.failed_players.contains(&p.player_identity)
+                                        });
+                                        if all_failed {
+                                            classic.failed_players.clear();
+                                        }
+                                        all_failed
+                                    }
+                                };
+                                if pick_new_trigram {
+                                    pick_random_trigram_and_update(state, rng);
+                                }
+                                return Ok(end_turn(game_state, rng));
+                            }
                         }
                     }
-                }
+                },
+
                 Move::GuessWord(guess) => {
                     match state
                         .players
@@ -527,7 +550,11 @@ fn make_move(
                                     }
                                     player.current_word = String::new();
                                     pick_random_trigram_and_update(state, rng);
-                                    state.failed_players.clear();
+                                    match &mut state.turn_logic {
+                                        TurnLogic::Classic(classic) => {
+                                            classic.failed_players.clear()
+                                        }
+                                    };
                                     return Ok(end_turn(game_state, rng));
                                 }
                                 Err(reason) => {
@@ -895,11 +922,6 @@ pub fn update_current_word(ctx: &ReducerContext, game_id: u32, word: String) -> 
                     .iter()
                     .position(|p| p.player_identity == ctx.sender)
                 {
-                    // Verify it's the player's turn
-                    if player_index as u32 != playing_state.current_turn_index {
-                        return Err("Not your turn".to_string());
-                    }
-
                     // Clear all player events
                     for player in &mut playing_state.players {
                         player.events.clear();
