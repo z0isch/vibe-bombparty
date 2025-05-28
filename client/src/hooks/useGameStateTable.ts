@@ -32,16 +32,17 @@ export function useGameStateTable(conn: moduleBindings.DbConnection | null, game
       if (gameStateData.gameId === gameId) {
         setGameStateTable(gameStateData);
         if (gameStateData.state.tag === 'Playing') {
-          eventQueue.publishEvents(gameStateData.state.value.playerEvents);
+          eventQueue.publishEvents(gameStateData.state.value.players);
         }
       }
     });
 
     conn.db.gameState.onUpdate((ctx, oldGameStateData, newGameStateData) => {
+      console.log('onUpdate', newGameStateData);
       if (newGameStateData.gameId === gameId) {
         setGameStateTable(newGameStateData);
         if (newGameStateData.state.tag === 'Playing') {
-          eventQueue.publishEvents(newGameStateData.state.value.playerEvents);
+          eventQueue.publishEvents(newGameStateData.state.value.players);
         }
       }
     });

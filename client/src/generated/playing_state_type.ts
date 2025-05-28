@@ -32,7 +32,6 @@ import {
 } from "@clockworklabs/spacetimedb-sdk";
 import { SettingsState as __SettingsState } from "./settings_state_type";
 import { PlayerGameData as __PlayerGameData } from "./player_game_data_type";
-import { PlayerEvents as __PlayerEvents } from "./player_events_type";
 import { TrigramExample as __TrigramExample } from "./trigram_example_type";
 
 export type PlayingState = {
@@ -40,7 +39,6 @@ export type PlayingState = {
   currentTurnIndex: number,
   turnNumber: number,
   settings: __SettingsState,
-  playerEvents: __PlayerEvents[],
   currentTrigram: string,
   failedPlayers: Identity[],
   trigramExamples: __TrigramExample[],
@@ -61,7 +59,6 @@ export namespace PlayingState {
       new ProductTypeElement("currentTurnIndex", AlgebraicType.createU32Type()),
       new ProductTypeElement("turnNumber", AlgebraicType.createU32Type()),
       new ProductTypeElement("settings", __SettingsState.getTypeScriptAlgebraicType()),
-      new ProductTypeElement("playerEvents", AlgebraicType.createArrayType(__PlayerEvents.getTypeScriptAlgebraicType())),
       new ProductTypeElement("currentTrigram", AlgebraicType.createStringType()),
       new ProductTypeElement("failedPlayers", AlgebraicType.createArrayType(AlgebraicType.createIdentityType())),
       new ProductTypeElement("trigramExamples", AlgebraicType.createArrayType(__TrigramExample.getTypeScriptAlgebraicType())),
