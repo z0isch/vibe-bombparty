@@ -546,7 +546,6 @@ fn make_move(
                                 .iter()
                                 .any(|g| g.round_number == state.turn_number);
                             if !submitted {
-                                player.lives = (player.lives - 1).max(0);
                                 player.events.push(GameStateEvent::TimeUp);
                             }
                         }
