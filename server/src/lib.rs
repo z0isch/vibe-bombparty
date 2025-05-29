@@ -500,7 +500,6 @@ fn make_move(
                                             classic.failed_players.push(current_player_identity);
                                         }
                                         player.lives = (player.lives - 1).max(0);
-                                        player.past_guesses.clear();
                                         let active_players: Vec<_> = state
                                             .players
                                             .iter()

@@ -38,7 +38,6 @@ export function useGameStateTable(conn: moduleBindings.DbConnection | null, game
     });
 
     conn.db.gameState.onUpdate((ctx, oldGameStateData, newGameStateData) => {
-      console.log('onUpdate', newGameStateData);
       if (newGameStateData.gameId === gameId) {
         setGameStateTable(newGameStateData);
         if (newGameStateData.state.tag === 'Playing') {

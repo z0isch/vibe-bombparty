@@ -111,7 +111,10 @@ export function Player({
       .map((g) => g.word);
   } else if (turnLogicMode.tag === 'Classic') {
     if (player.pastGuesses.length > 0) {
-      wordPills = [player.pastGuesses[player.pastGuesses.length - 1].word];
+      wordPills = player.pastGuesses
+        .slice(-5)
+        .map((g) => g.word)
+        .reverse();
     }
   }
 
@@ -163,11 +166,6 @@ export function Player({
           value={inputEnabled ? inputWord : ''}
           onChange={handleWordChange}
           onKeyDown={handleKeyDown}
-          placeholder={
-            !inputEnabled && player.pastGuesses && player.pastGuesses.length > 0
-              ? player.pastGuesses[player.pastGuesses.length - 1].word
-              : ''
-          }
           className={`w-full bg-gray-700 text-white px-3 py-2 rounded min-h-[2.5rem] focus:outline-none ${
             inputEnabled
               ? inputWord.length > 10 && containsTrigram
