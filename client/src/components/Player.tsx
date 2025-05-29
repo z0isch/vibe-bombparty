@@ -99,9 +99,10 @@ export function Player({
 
   // In Simultaneous mode, input is enabled for current player if not game over
   const inputEnabled =
-    turnLogicMode.tag === 'Simultaneous'
+    player.lives > 0 &&
+    (turnLogicMode.tag === 'Simultaneous'
       ? isCurrentPlayer && !isGameOver
-      : isTheirTurn && isCurrentPlayer;
+      : isTheirTurn && isCurrentPlayer);
 
   // --- WORD PILLS LOGIC ---
   let wordPills: string[] = [];
