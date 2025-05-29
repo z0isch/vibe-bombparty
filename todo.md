@@ -19,6 +19,9 @@
 - ~show wins for current game~
 - ~Fix going straight into a game~
 - ~show used word in word history also~
+- Hearts break in use all letters mode
+- Can't see player typing
+- Sounds for miss happen for all players
 
 # Ideas
 
@@ -35,11 +38,11 @@
 
 - After valid word, use a trigram in that word as the next one
 
-## Survivor
-- First to use all letters wins
-- Everyone acts at the same time on the same trigram
-- No lives
-- No repeat words amongst players
-- Bonus letter on > 10 letter words
-- Bonus letter after using so many letters over the course of the game?
+~## Survivor~
 
+- ~First to use all letters wins~
+- ~Everyone acts at the same time on the same trigram~
+- ~No lives~
+- ~No repeat words amongst players~
+- ~Bonus letter on > 10 letter words~
+- Bonus letter after using so many letters over the course of the game?
