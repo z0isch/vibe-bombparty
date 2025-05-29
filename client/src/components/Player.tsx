@@ -68,7 +68,7 @@ export function Player({
     if (!isCurrentPlayer || !isTheirTurn) {
       setInputWord(player.currentWord);
     }
-  }, [player.currentWord, isCurrentPlayer, isTheirTurn]);
+  }, [player.currentWord, isCurrentPlayer]);
 
   // Focus input when it becomes player's turn
   useEffect(() => {
@@ -164,7 +164,7 @@ export function Player({
         <input
           ref={inputRef}
           type="text"
-          value={inputEnabled ? inputWord : ''}
+          value={inputWord}
           onChange={handleWordChange}
           onKeyDown={handleKeyDown}
           className={`w-full bg-gray-700 text-white px-3 py-2 rounded min-h-[2.5rem] focus:outline-none ${
