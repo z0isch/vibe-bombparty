@@ -1,5 +1,4 @@
 import { Identity } from '@clockworklabs/spacetimedb-sdk';
-import spoken from 'spoken';
 
 import { eventQueue } from './eventQueue';
 import { GameStateEvent } from './generated/game_state_event_type';
