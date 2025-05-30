@@ -14,7 +14,7 @@ export function usePlayerEventMotionProps(
   calcProps: (events: EventsState) => MotionProps,
   playerIdentity?: Identity
 ) {
-  const initialEvents = {
+  const initialEvents: EventsState = {
     InvalidGuess: null,
     TimeUp: null,
     MyTurn: null,

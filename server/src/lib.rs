@@ -130,7 +130,7 @@ pub enum GameStateEvent {
     MyTurn,
     IWin,
     ILose,
-    CorrectGuess,
+    CorrectGuess(String),
     LifeEarned,
     FreeLetterAward(FreeLetterAwardEvent),
 }
@@ -566,7 +566,9 @@ fn make_move(
                             let word = guess.word.trim().to_uppercase();
                             match is_word_valid(&word, &state.current_trigram, &used_words) {
                                 Ok(()) => {
-                                    player.events.push(GameStateEvent::CorrectGuess);
+                                    player
+                                        .events
+                                        .push(GameStateEvent::CorrectGuess(word.clone()));
                                     player.past_guesses.push(PastGuess {
                                         word: word.clone(),
                                         round_number: state.turn_number,

@@ -21,7 +21,6 @@
 - ~show used word in word history also~
 - ~Hearts break in use all letters mode~
 - ~Can't see player typing~
-- Sounds for miss happen for all players
 
 # Ideas
 

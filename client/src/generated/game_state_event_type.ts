@@ -43,7 +43,7 @@ export namespace GameStateEvent {
   export type MyTurn = { tag: "MyTurn" };
   export type IWin = { tag: "IWin" };
   export type ILose = { tag: "ILose" };
-  export type CorrectGuess = { tag: "CorrectGuess" };
+  export type CorrectGuess = { tag: "CorrectGuess", value: string };
   export type LifeEarned = { tag: "LifeEarned" };
   export type FreeLetterAward = { tag: "FreeLetterAward", value: __FreeLetterAwardEvent };
 
@@ -58,7 +58,7 @@ export namespace GameStateEvent {
   export const MyTurn = { tag: "MyTurn" };
   export const IWin = { tag: "IWin" };
   export const ILose = { tag: "ILose" };
-  export const CorrectGuess = { tag: "CorrectGuess" };
+  export const CorrectGuess = (value: string): GameStateEvent => ({ tag: "CorrectGuess", value });
   export const LifeEarned = { tag: "LifeEarned" };
   export const FreeLetterAward = (value: __FreeLetterAwardEvent): GameStateEvent => ({ tag: "FreeLetterAward", value });
 
@@ -69,7 +69,7 @@ export namespace GameStateEvent {
       new SumTypeVariant("MyTurn", AlgebraicType.createProductType([])),
       new SumTypeVariant("IWin", AlgebraicType.createProductType([])),
       new SumTypeVariant("ILose", AlgebraicType.createProductType([])),
-      new SumTypeVariant("CorrectGuess", AlgebraicType.createProductType([])),
+      new SumTypeVariant("CorrectGuess", AlgebraicType.createStringType()),
       new SumTypeVariant("LifeEarned", AlgebraicType.createProductType([])),
       new SumTypeVariant("FreeLetterAward", __FreeLetterAwardEvent.getTypeScriptAlgebraicType()),
     ]);
