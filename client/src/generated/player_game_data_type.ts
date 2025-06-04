@@ -30,13 +30,14 @@ import {
   Timestamp,
   deepEqual,
 } from "@clockworklabs/spacetimedb-sdk";
+import { PlayerWinConditionData as __PlayerWinConditionData } from "./player_win_condition_data_type";
 import { PastGuess as __PastGuess } from "./past_guess_type";
 import { GameStateEvent as __GameStateEvent } from "./game_state_event_type";
 
 export type PlayerGameData = {
   playerIdentity: Identity,
   currentWord: string,
-  lives: number,
+  winConditionData: __PlayerWinConditionData,
   usedLetters: string[],
   freeLetters: string[],
   pastGuesses: __PastGuess[],
@@ -55,7 +56,7 @@ export namespace PlayerGameData {
     return AlgebraicType.createProductType([
       new ProductTypeElement("playerIdentity", AlgebraicType.createIdentityType()),
       new ProductTypeElement("currentWord", AlgebraicType.createStringType()),
-      new ProductTypeElement("lives", AlgebraicType.createI32Type()),
+      new ProductTypeElement("winConditionData", __PlayerWinConditionData.getTypeScriptAlgebraicType()),
       new ProductTypeElement("usedLetters", AlgebraicType.createArrayType(AlgebraicType.createStringType())),
       new ProductTypeElement("freeLetters", AlgebraicType.createArrayType(AlgebraicType.createStringType())),
       new ProductTypeElement("pastGuesses", AlgebraicType.createArrayType(__PastGuess.getTypeScriptAlgebraicType())),

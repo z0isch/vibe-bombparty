@@ -15,11 +15,17 @@ pub struct PastGuess {
 pub struct PlayerGameData {
     pub player_identity: Identity, // Reference to PlayerInfo
     pub current_word: String,
-    pub lives: i32,
+    pub win_condition_data: PlayerWinConditionData,
     pub used_letters: Vec<String>, // Track letters used by this player
     pub free_letters: Vec<String>, // Track letters that were awarded for free
     pub past_guesses: Vec<PastGuess>, // Stack of past guesses (most recent last)
     pub events: Vec<GameStateEvent>, // Events for this player (moved from PlayingState)
+}
+
+#[derive(Clone, SpacetimeType)]
+pub enum PlayerWinConditionData {
+    LastPlayerStanding { lives: i32 },
+    UseAllLetters,
 }
 
 #[spacetimedb::table(name = player_info, public)]
@@ -328,7 +334,14 @@ pub enum Move {
 fn has_winner(state: &PlayingState) -> GameResult {
     match state.settings.win_condition {
         WinCondition::LastPlayerStanding => {
-            let players_with_lives: Vec<_> = state.players.iter().filter(|p| p.lives > 0).collect();
+            let players_with_lives: Vec<_> = state
+                .players
+                .iter()
+                .filter(|p| match p.win_condition_data {
+                    PlayerWinConditionData::LastPlayerStanding { lives } => lives > 0,
+                    PlayerWinConditionData::UseAllLetters => false,
+                })
+                .collect();
             match players_with_lives.len() {
                 0 => GameResult::Draw,
                 1 => GameResult::Winner(players_with_lives[0].player_identity),
@@ -379,7 +392,12 @@ fn end_turn(
                                 .zip(0..)
                                 .cycle()
                                 .skip(classic.current_turn_index as usize + 1)
-                                .find(|(p, _)| p.lives > 0)
+                                .find(|(p, _)| match p.win_condition_data {
+                                    PlayerWinConditionData::LastPlayerStanding { lives } => {
+                                        lives > 0
+                                    }
+                                    PlayerWinConditionData::UseAllLetters => true,
+                                })
                                 .unwrap();
                             let next_player_identity = next_player.player_identity;
                             state
@@ -499,11 +517,26 @@ fn make_move(
                                         {
                                             classic.failed_players.push(current_player_identity);
                                         }
-                                        player.lives = (player.lives - 1).max(0);
+                                        // Decrement lives if LastPlayerStanding
+                                        if let PlayerWinConditionData::LastPlayerStanding {
+                                            lives,
+                                        } = player.win_condition_data
+                                        {
+                                            let new_lives = (lives - 1).max(0);
+                                            player.win_condition_data =
+                                                PlayerWinConditionData::LastPlayerStanding {
+                                                    lives: new_lives,
+                                                };
+                                        }
                                         let active_players: Vec<_> = state
                                             .players
                                             .iter()
-                                            .filter(|p| p.lives > 0)
+                                            .filter(|p| match p.win_condition_data {
+                                                PlayerWinConditionData::LastPlayerStanding {
+                                                    lives,
+                                                } => lives > 0,
+                                                PlayerWinConditionData::UseAllLetters => true,
+                                            })
                                             .map(|p| p.player_identity)
                                             .collect();
                                         let all_active_failed = active_players
@@ -546,6 +579,16 @@ fn make_move(
                                 .iter()
                                 .any(|g| g.round_number == state.turn_number);
                             if !submitted {
+                                // Decrement lives if LastPlayerStanding
+                                if let PlayerWinConditionData::LastPlayerStanding { lives } =
+                                    player.win_condition_data
+                                {
+                                    let new_lives = (lives - 1).max(0);
+                                    player.win_condition_data =
+                                        PlayerWinConditionData::LastPlayerStanding {
+                                            lives: new_lives,
+                                        };
+                                }
                                 player.events.push(GameStateEvent::TimeUp);
                             }
                         }
@@ -605,7 +648,9 @@ fn make_move(
                                                     || player.free_letters.contains(&letter)
                                             });
                                             if has_all_letters {
-                                                player.lives += 1;
+                                                if let PlayerWinConditionData::LastPlayerStanding { lives } = player.win_condition_data {
+                                                    player.win_condition_data = PlayerWinConditionData::LastPlayerStanding { lives: lives + 1 };
+                                                }
                                                 player.used_letters.clear();
                                                 player.free_letters.clear();
                                                 player.events.push(GameStateEvent::LifeEarned);
@@ -847,7 +892,7 @@ fn create_initial_player_game_data(player_identity: Identity) -> PlayerGameData 
     PlayerGameData {
         player_identity,
         current_word: String::new(),
-        lives: 3,                 // Start with 3 lives
+        win_condition_data: PlayerWinConditionData::LastPlayerStanding { lives: 3 },
         used_letters: Vec::new(), // Initialize empty used letters
         free_letters: Vec::new(), // Initialize empty free letters
         past_guesses: Vec::new(), // Initialize empty guess stack

@@ -97,12 +97,32 @@ export function Player({
     }
   };
 
-  // In Simultaneous mode, input is enabled for current player if not game over
-  const inputEnabled =
-    player.lives > 0 &&
-    (turnLogicMode.tag === 'Simultaneous'
-      ? isCurrentPlayer && !isGameOver
-      : isTheirTurn && isCurrentPlayer);
+  let inputEnabled = true;
+  switch (player.winConditionData.tag) {
+    case 'LastPlayerStanding': {
+      inputEnabled = player.winConditionData.value > 0;
+      break;
+    }
+    case 'UseAllLetters': {
+      break;
+    }
+    default: {
+      const _exhaustive: never = player.winConditionData;
+      throw new Error(`Unhandled winConditionData tag: ${JSON.stringify(_exhaustive)}`);
+    }
+  }
+  switch (turnLogicMode.tag) {
+    case 'Simultaneous':
+      inputEnabled = inputEnabled && isCurrentPlayer && !isGameOver;
+      break;
+    case 'Classic':
+      inputEnabled = inputEnabled && isTheirTurn && isCurrentPlayer;
+      break;
+    default: {
+      const _exhaustive: never = turnLogicMode;
+      throw new Error(`Unhandled turnLogicMode tag: ${JSON.stringify(_exhaustive)}`);
+    }
+  }
 
   // --- WORD PILLS LOGIC ---
   let wordPills: string[] = [];
@@ -133,19 +153,36 @@ export function Player({
           />
           <p className="font-medium">{playerInfo.username}</p>
         </div>
-        {/* Only show hearts if winCondition is LastPlayerStanding */}
-        {winCondition.tag === 'LastPlayerStanding' && (
-          <div className="flex items-center gap-1">
-            {[...Array(Math.max(3, player.lives))].map((_, i) => (
-              <Heart
-                key={i}
-                player={player}
-                isActive={i < player.lives}
-                isNewestHeart={i === player.lives - 1}
-              />
-            ))}
-          </div>
-        )}
+        {/* Only show hearts if winCondition is LastPlayerStanding and player.winConditionData is LastPlayerStanding */}
+        {(() => {
+          switch (winCondition.tag) {
+            case 'LastPlayerStanding': {
+              if (player.winConditionData.tag === 'LastPlayerStanding') {
+                const lives = player.winConditionData.value;
+                return (
+                  <div className="flex items-center gap-1">
+                    {[...Array(Math.max(3, lives))].map((_, i) => (
+                      <Heart
+                        key={i}
+                        player={player}
+                        isActive={i < lives}
+                        isNewestHeart={i === lives - 1}
+                      />
+                    ))}
+                  </div>
+                );
+              }
+              return null;
+            }
+            case 'UseAllLetters':
+              return null;
+            default: {
+              // Exhaustiveness check
+              const _exhaustive: never = winCondition;
+              throw new Error(`Unhandled winCondition tag: ${JSON.stringify(_exhaustive)}`);
+            }
+          }
+        })()}
       </div>
       <div className="mt-2 space-y-2">
         {/* WORD PILLS SECTION */}

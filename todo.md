@@ -21,7 +21,8 @@
 - ~show used word in word history also~
 - ~Hearts break in use all letters mode~
 - ~Can't see player typing~
-- Can't lose hearts on simultaneous + last player standing
+- ~Can't lose hearts on simultaneous + last player standing~
+- Variable number of hearts
 
 # Ideas
 
@@ -48,6 +49,7 @@
 - Bonus letter after using so many words over the course of the game?
 
 ## Semi co-op
+
 - Take turns (have a letter cooldown) adding letters to make a word
 - All lose if shared hearts
 - Winner is the one that uses all their letters
