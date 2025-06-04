@@ -39,7 +39,7 @@
 
 - After valid word, use a trigram in that word as the next one
 
-~## Survivor~
+## ~Survivor~
 
 - ~First to use all letters wins~
 - ~Everyone acts at the same time on the same trigram~
