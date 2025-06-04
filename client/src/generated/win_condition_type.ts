@@ -35,7 +35,7 @@ export namespace WinCondition {
   // These are the generated variant types for each variant of the tagged union.
   // One type is generated per variant and will be used in the `value` field of
   // the tagged union.
-  export type LastPlayerStanding = { tag: "LastPlayerStanding" };
+  export type LastPlayerStanding = { tag: "LastPlayerStanding", value: number };
   export type UseAllLetters = { tag: "UseAllLetters" };
 
   // Helper functions for constructing each variant of the tagged union.
@@ -44,12 +44,12 @@ export namespace WinCondition {
   // assert!(foo.tag === "A");
   // assert!(foo.value === 42);
   // ```
-  export const LastPlayerStanding = { tag: "LastPlayerStanding" };
+  export const LastPlayerStanding = (value: number): WinCondition => ({ tag: "LastPlayerStanding", value });
   export const UseAllLetters = { tag: "UseAllLetters" };
 
   export function getTypeScriptAlgebraicType(): AlgebraicType {
     return AlgebraicType.createSumType([
-      new SumTypeVariant("LastPlayerStanding", AlgebraicType.createProductType([])),
+      new SumTypeVariant("LastPlayerStanding", AlgebraicType.createU32Type()),
       new SumTypeVariant("UseAllLetters", AlgebraicType.createProductType([])),
     ]);
   }

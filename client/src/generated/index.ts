@@ -58,6 +58,8 @@ import { TurnTimeout } from "./turn_timeout_reducer.ts";
 export { TurnTimeout };
 import { UpdateCurrentWord } from "./update_current_word_reducer.ts";
 export { UpdateCurrentWord };
+import { UpdateStartingLives } from "./update_starting_lives_reducer.ts";
+export { UpdateStartingLives };
 import { UpdateTurnLogicMode } from "./update_turn_logic_mode_reducer.ts";
 export { UpdateTurnLogicMode };
 import { UpdateTurnTimeout } from "./update_turn_timeout_reducer.ts";
@@ -206,6 +208,10 @@ const REMOTE_MODULE = {
       reducerName: "update_current_word",
       argsType: UpdateCurrentWord.getTypeScriptAlgebraicType(),
     },
+    update_starting_lives: {
+      reducerName: "update_starting_lives",
+      argsType: UpdateStartingLives.getTypeScriptAlgebraicType(),
+    },
     update_turn_logic_mode: {
       reducerName: "update_turn_logic_mode",
       argsType: UpdateTurnLogicMode.getTypeScriptAlgebraicType(),
@@ -258,6 +264,7 @@ export type Reducer = never
 | { name: "SubmitWord", args: SubmitWord }
 | { name: "TurnTimeout", args: TurnTimeout }
 | { name: "UpdateCurrentWord", args: UpdateCurrentWord }
+| { name: "UpdateStartingLives", args: UpdateStartingLives }
 | { name: "UpdateTurnLogicMode", args: UpdateTurnLogicMode }
 | { name: "UpdateTurnTimeout", args: UpdateTurnTimeout }
 | { name: "UpdateWinCondition", args: UpdateWinCondition }
@@ -458,6 +465,22 @@ export class RemoteReducers {
     this.connection.offReducer("update_current_word", callback);
   }
 
+  updateStartingLives(gameId: number, startingLives: number) {
+    const __args = { gameId, startingLives };
+    let __writer = new BinaryWriter(1024);
+    UpdateStartingLives.getTypeScriptAlgebraicType().serialize(__writer, __args);
+    let __argsBuffer = __writer.getBuffer();
+    this.connection.callReducer("update_starting_lives", __argsBuffer, this.setCallReducerFlags.updateStartingLivesFlags);
+  }
+
+  onUpdateStartingLives(callback: (ctx: ReducerEventContext, gameId: number, startingLives: number) => void) {
+    this.connection.onReducer("update_starting_lives", callback);
+  }
+
+  removeOnUpdateStartingLives(callback: (ctx: ReducerEventContext, gameId: number, startingLives: number) => void) {
+    this.connection.offReducer("update_starting_lives", callback);
+  }
+
   updateTurnLogicMode(gameId: number, turnLogicMode: TurnLogicMode) {
     const __args = { gameId, turnLogicMode };
     let __writer = new BinaryWriter(1024);
@@ -562,6 +585,11 @@ export class SetReducerFlags {
   updateCurrentWordFlags: CallReducerFlags = 'FullUpdate';
   updateCurrentWord(flags: CallReducerFlags) {
     this.updateCurrentWordFlags = flags;
+  }
+
+  updateStartingLivesFlags: CallReducerFlags = 'FullUpdate';
+  updateStartingLives(flags: CallReducerFlags) {
+    this.updateStartingLivesFlags = flags;
   }
 
   updateTurnLogicModeFlags: CallReducerFlags = 'FullUpdate';

@@ -98,9 +98,9 @@ pub struct PlayingState {
     pub winner: GameResult,    // Winner, Draw, or None
 }
 
-#[derive(Clone, Copy, SpacetimeType)]
+#[derive(Clone, Copy, SpacetimeType, PartialEq)]
 pub enum WinCondition {
-    LastPlayerStanding,
+    LastPlayerStanding { starting_lives: u32 },
     UseAllLetters,
 }
 
@@ -333,7 +333,7 @@ pub enum Move {
 
 fn has_winner(state: &PlayingState) -> GameResult {
     match state.settings.win_condition {
-        WinCondition::LastPlayerStanding => {
+        WinCondition::LastPlayerStanding { .. } => {
             let players_with_lives: Vec<_> = state
                 .players
                 .iter()
@@ -510,7 +510,7 @@ fn make_move(
                                 player.current_word = String::new();
                                 player.events.push(GameStateEvent::TimeUp);
                                 let pick_new_trigram = match state.settings.win_condition {
-                                    WinCondition::LastPlayerStanding => {
+                                    WinCondition::LastPlayerStanding { .. } => {
                                         if !classic
                                             .failed_players
                                             .contains(&current_player_identity)
@@ -641,7 +641,7 @@ fn make_move(
                                         }
                                     }
                                     match state.settings.win_condition {
-                                        WinCondition::LastPlayerStanding => {
+                                        WinCondition::LastPlayerStanding { .. } => {
                                             let has_all_letters = ('A'..='Z').all(|c| {
                                                 let letter = c.to_string();
                                                 player.used_letters.contains(&letter)
@@ -819,11 +819,11 @@ pub fn create_game(ctx: &ReducerContext, name: String) -> Result<(), String> {
         state: GameState::Settings(SettingsState {
             turn_timeout_seconds: 7,
             players: Vec::new(),
-            win_condition: WinCondition::LastPlayerStanding,
+            win_condition: WinCondition::LastPlayerStanding { starting_lives: 3 },
             turn_logic_mode: TurnLogicMode::Classic,
         }),
         updated_at: ctx.timestamp,
-        player_wins: Vec::new(), // Initialize empty wins tracking
+        player_wins: Vec::new(),
     };
     ctx.db.game_state().insert(game_state);
 
@@ -888,15 +888,26 @@ pub fn update_turn_timeout(ctx: &ReducerContext, game_id: u32, seconds: u32) -> 
 }
 
 // Helper function to create a new PlayerGameData instance
-fn create_initial_player_game_data(player_identity: Identity) -> PlayerGameData {
+fn create_initial_player_game_data(
+    player_identity: Identity,
+    win_condition: &WinCondition,
+) -> PlayerGameData {
+    let win_condition_data = match win_condition {
+        WinCondition::LastPlayerStanding { starting_lives } => {
+            PlayerWinConditionData::LastPlayerStanding {
+                lives: *starting_lives as i32,
+            }
+        }
+        WinCondition::UseAllLetters => PlayerWinConditionData::UseAllLetters,
+    };
     PlayerGameData {
         player_identity,
         current_word: String::new(),
-        win_condition_data: PlayerWinConditionData::LastPlayerStanding { lives: 3 },
-        used_letters: Vec::new(), // Initialize empty used letters
-        free_letters: Vec::new(), // Initialize empty free letters
-        past_guesses: Vec::new(), // Initialize empty guess stack
-        events: Vec::new(),       // Initialize empty events
+        win_condition_data,
+        used_letters: Vec::new(),
+        free_letters: Vec::new(),
+        past_guesses: Vec::new(),
+        events: Vec::new(),
     }
 }
 
@@ -925,7 +936,15 @@ pub fn register_player(ctx: &ReducerContext, username: String) -> Result<(), Str
 
 #[spacetimedb::reducer]
 pub fn add_player_to_game(ctx: &ReducerContext, game_id: u32) -> Result<(), String> {
-    let player = create_initial_player_game_data(ctx.sender);
+    let win_condition = if let Some(game_state) = get_game_state(ctx, game_id) {
+        match &game_state.state {
+            GameState::Settings(settings) => settings.win_condition.clone(),
+            _ => WinCondition::LastPlayerStanding { starting_lives: 3 },
+        }
+    } else {
+        WinCondition::LastPlayerStanding { starting_lives: 3 }
+    };
+    let player = create_initial_player_game_data(ctx.sender, &win_condition);
 
     // Update game's player_identities list
     if let Some(mut game) = ctx.db.game().id().find(&game_id) {
@@ -1136,16 +1155,17 @@ pub fn restart_game(ctx: &ReducerContext, game_id: u32) -> Result<(), String> {
         match &mut game_state.state {
             GameState::Playing(playing_state) => {
                 // Reset all players' lives and words
+                let win_condition = &playing_state.settings.win_condition;
                 let reset_players: Vec<PlayerGameData> = playing_state
                     .players
                     .iter()
-                    .map(|p| create_initial_player_game_data(p.player_identity))
+                    .map(|p| create_initial_player_game_data(p.player_identity, win_condition))
                     .collect();
 
                 game_state.state = GameState::Settings(SettingsState {
                     turn_timeout_seconds: playing_state.settings.turn_timeout_seconds,
                     players: reset_players,
-                    win_condition: playing_state.settings.win_condition.clone(),
+                    win_condition: win_condition.clone(),
                     turn_logic_mode: playing_state.settings.turn_logic_mode,
                 });
                 game_state.updated_at = ctx.timestamp;
@@ -1197,6 +1217,44 @@ pub fn update_turn_logic_mode(
                 Ok(())
             }
             _ => Err("Can only update turn logic mode in Settings state".to_string()),
+        }
+    } else {
+        Err("Game not initialized".to_string())
+    }
+}
+
+#[spacetimedb::reducer]
+pub fn update_starting_lives(
+    ctx: &ReducerContext,
+    game_id: u32,
+    starting_lives: u32,
+) -> Result<(), String> {
+    if starting_lives == 0 {
+        return Err("Starting lives must be greater than 0".to_string());
+    }
+    if let Some(mut game_state) = get_game_state(ctx, game_id) {
+        match &mut game_state.state {
+            GameState::Settings(settings) => {
+                if let WinCondition::LastPlayerStanding {
+                    starting_lives: ref mut lives,
+                } = &mut settings.win_condition
+                {
+                    *lives = starting_lives;
+                    for player in &mut settings.players {
+                        player.win_condition_data = PlayerWinConditionData::LastPlayerStanding {
+                            lives: starting_lives as i32,
+                        };
+                    }
+                }
+                update_game_state(ctx, game_state);
+                Ok(())
+            }
+            GameState::Countdown(_) => {
+                Err("Cannot update starting lives during countdown".to_string())
+            }
+            GameState::Playing(_) => {
+                Err("Cannot update starting lives while game is in progress".to_string())
+            }
         }
     } else {
         Err("Game not initialized".to_string())

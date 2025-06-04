@@ -22,6 +22,7 @@ interface PlayerProps {
   turnLogicMode: TurnLogicMode;
   isGameOver?: boolean;
   currentTurnNumber: number;
+  startingHearts?: number;
 }
 
 export function Player({
@@ -37,6 +38,7 @@ export function Player({
   turnLogicMode,
   isGameOver,
   currentTurnNumber,
+  startingHearts,
 }: PlayerProps) {
   const [inputWord, setInputWord] = useState(player.currentWord);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -159,9 +161,10 @@ export function Player({
             case 'LastPlayerStanding': {
               if (player.winConditionData.tag === 'LastPlayerStanding') {
                 const lives = player.winConditionData.value;
+                const maxHearts = typeof startingHearts === 'number' ? startingHearts : lives;
                 return (
                   <div className="flex items-center gap-1">
-                    {[...Array(Math.max(3, lives))].map((_, i) => (
+                    {[...Array(maxHearts)].map((_, i) => (
                       <Heart
                         key={i}
                         player={player}

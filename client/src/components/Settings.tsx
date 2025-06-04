@@ -33,6 +33,9 @@ export function Settings({
   const [turnTimeout, setTurnTimeout] = useState(turnTimeoutSeconds);
   const [selectedWinCondition, setSelectedWinCondition] = useState<WinCondition>(winCondition);
   const [selectedTurnLogicMode, setSelectedTurnLogicMode] = useState<TurnLogicMode>(turnLogicMode);
+  const [startingHearts, setStartingHearts] = useState(
+    selectedWinCondition.tag === 'LastPlayerStanding' ? selectedWinCondition.value : 3
+  );
   // Keep local state in sync with prop
   useEffect(() => {
     setTurnTimeout(turnTimeoutSeconds);
@@ -43,6 +46,11 @@ export function Settings({
   useEffect(() => {
     setSelectedTurnLogicMode(turnLogicMode);
   }, [turnLogicMode]);
+  useEffect(() => {
+    if (selectedWinCondition.tag === 'LastPlayerStanding') {
+      setStartingHearts(selectedWinCondition.value);
+    }
+  }, [selectedWinCondition]);
   const handleStartGame = async () => {
     if (!conn) return;
     try {
@@ -87,9 +95,9 @@ export function Settings({
               onChange={async (e) => {
                 const tag = e.target.value;
                 let winCond: WinCondition =
-                  tag === WinCondition.LastPlayerStanding.tag
-                    ? (WinCondition.LastPlayerStanding as any as WinCondition)
-                    : (WinCondition.UseAllLetters as any as WinCondition);
+                  tag === 'LastPlayerStanding'
+                    ? (WinCondition.LastPlayerStanding(startingHearts) as WinCondition)
+                    : (WinCondition.UseAllLetters as WinCondition);
                 setSelectedWinCondition(winCond);
                 try {
                   await conn.reducers.updateWinCondition(gameId, winCond);
@@ -99,12 +107,32 @@ export function Settings({
               }}
               className="bg-gray-700 text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
             >
-              <option value={WinCondition.LastPlayerStanding.tag as string}>
-                Last Player Standing (default)
-              </option>
-              <option value={WinCondition.UseAllLetters.tag as string}>Use All Letters</option>
+              <option value={'LastPlayerStanding'}>Last Player Standing (default)</option>
+              <option value={'UseAllLetters'}>Use All Letters</option>
             </select>
           </div>
+          {selectedWinCondition.tag === 'LastPlayerStanding' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Starting Hearts
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={startingHearts}
+                onChange={async (e) => {
+                  const value = Math.max(1, parseInt(e.target.value) || 1);
+                  setStartingHearts(value);
+                  try {
+                    await conn.reducers.updateStartingLives(gameId, value);
+                  } catch (error) {
+                    // Silently handle errors
+                  }
+                }}
+                className="bg-gray-700 text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 w-32"
+              />
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">Turn Logic Mode</label>
             <select

@@ -217,6 +217,10 @@ export function Playing({ playingState, playerInfos, conn, gameId }: PlayingProp
                       isSimultaneous ||
                       playerIndex === currentTurnIndex % playingState.players.length;
 
+                    let startingHearts: number | undefined = undefined;
+                    if (playingState.settings.winCondition.tag === 'LastPlayerStanding') {
+                      startingHearts = playingState.settings.winCondition.value;
+                    }
                     return (
                       <Player
                         key={player.playerIdentity.toHexString()}
@@ -232,6 +236,7 @@ export function Playing({ playingState, playerInfos, conn, gameId }: PlayingProp
                         turnLogicMode={playingState.turnLogic}
                         isGameOver={isGameOver}
                         currentTurnNumber={playingState.turnNumber}
+                        startingHearts={startingHearts}
                       />
                     );
                   })}
