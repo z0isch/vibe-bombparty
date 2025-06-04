@@ -237,6 +237,7 @@ export function Playing({ playingState, playerInfos, conn, gameId }: PlayingProp
                         isGameOver={isGameOver}
                         currentTurnNumber={playingState.turnNumber}
                         startingHearts={startingHearts}
+                        bonusLetterWordCount={playingState.settings.bonusLetterWordCount}
                       />
                     );
                   })}

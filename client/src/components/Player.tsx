@@ -23,6 +23,7 @@ interface PlayerProps {
   isGameOver?: boolean;
   currentTurnNumber: number;
   startingHearts?: number;
+  bonusLetterWordCount?: number;
 }
 
 export function Player({
@@ -39,6 +40,7 @@ export function Player({
   isGameOver,
   currentTurnNumber,
   startingHearts,
+  bonusLetterWordCount,
 }: PlayerProps) {
   const [inputWord, setInputWord] = useState(player.currentWord);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -201,6 +203,30 @@ export function Player({
             ))}
           </div>
         )}
+        {/* BONUS LETTER PROGRESS BAR */}
+        {bonusLetterWordCount &&
+          bonusLetterWordCount > 1 &&
+          (() => {
+            // Count words since last bonus letter (simple: total guesses modulo bonusLetterWordCount)
+            const guesses = player.pastGuesses.length;
+            const progress = guesses % bonusLetterWordCount;
+            const percent = (progress / bonusLetterWordCount) * 100;
+            return (
+              <div className="mb-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs text-blue-200">
+                    {progress} / {bonusLetterWordCount} words for bonus letter
+                  </span>
+                </div>
+                <div className="w-full h-2 bg-blue-900 rounded-full overflow-hidden">
+                  <div
+                    className="h-2 bg-blue-400 transition-all duration-300"
+                    style={{ width: `${percent}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })()}
         <input
           ref={inputRef}
           type="text"
