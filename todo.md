@@ -46,7 +46,7 @@
 - ~No lives~
 - ~No repeat words amongst players~
 - ~Bonus letter on > 10 letter words~
-- Bonus letter after using so many words over the course of the game?
+- ~Bonus letter after using so many words over the course of the game?~
 
 ## Semi co-op
 
