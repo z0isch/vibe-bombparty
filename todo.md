@@ -22,7 +22,7 @@
 - ~Hearts break in use all letters mode~
 - ~Can't see player typing~
 - ~Can't lose hearts on simultaneous + last player standing~
-- Variable number of hearts
+- ~Variable number of hearts~
 
 # Ideas
 
