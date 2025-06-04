@@ -22,7 +22,6 @@
 - ~Hearts break in use all letters mode~
 - ~Can't see player typing~
 - Can't lose hearts on simultaneous + last player standing
-- Extra letters for using so many words in simultaneous
 
 # Ideas
 
