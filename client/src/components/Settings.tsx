@@ -17,6 +17,7 @@ interface SettingsProps {
   isCurrentPlayer: boolean;
   winCondition: WinCondition;
   turnLogicMode: TurnLogicMode;
+  bonusLetterWordCount: number | undefined;
 }
 
 export function Settings({
@@ -29,12 +30,16 @@ export function Settings({
   isCurrentPlayer,
   winCondition,
   turnLogicMode,
+  bonusLetterWordCount,
 }: SettingsProps) {
   const [turnTimeout, setTurnTimeout] = useState(turnTimeoutSeconds);
   const [selectedWinCondition, setSelectedWinCondition] = useState<WinCondition>(winCondition);
   const [selectedTurnLogicMode, setSelectedTurnLogicMode] = useState<TurnLogicMode>(turnLogicMode);
   const [startingHearts, setStartingHearts] = useState(
     selectedWinCondition.tag === 'LastPlayerStanding' ? selectedWinCondition.value : 3
+  );
+  const [localBonusLetterWordCount, setLocalBonusLetterWordCount] = useState<number | undefined>(
+    bonusLetterWordCount
   );
   // Keep local state in sync with prop
   useEffect(() => {
@@ -51,6 +56,9 @@ export function Settings({
       setStartingHearts(selectedWinCondition.value);
     }
   }, [selectedWinCondition]);
+  useEffect(() => {
+    setLocalBonusLetterWordCount(bonusLetterWordCount);
+  }, [bonusLetterWordCount]);
   const handleStartGame = async () => {
     if (!conn) return;
     try {
@@ -154,6 +162,37 @@ export function Settings({
                 Simultaneous (all play at once)
               </option>
             </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Bonus Letter Every N Words (optional)
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={localBonusLetterWordCount ?? ''}
+              onChange={async (e) => {
+                const val = e.target.value;
+                let newValue: number | undefined = undefined;
+                if (val !== '') {
+                  const parsed = parseInt(val, 10);
+                  if (!isNaN(parsed) && parsed >= 1) {
+                    newValue = parsed;
+                  }
+                }
+                setLocalBonusLetterWordCount(newValue);
+                try {
+                  await conn.reducers.updateBonusLetterWordCount(gameId, newValue);
+                } catch (error) {
+                  // Silently handle errors
+                }
+              }}
+              placeholder="None"
+              className="bg-gray-700 text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 w-32"
+            />
+            <p className="text-xs text-gray-400 mt-1">
+              Award a free letter every N words submitted. Leave blank to disable.
+            </p>
           </div>
         </div>
       </div>

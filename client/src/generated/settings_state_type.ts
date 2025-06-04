@@ -39,6 +39,7 @@ export type SettingsState = {
   players: __PlayerGameData[],
   winCondition: __WinCondition,
   turnLogicMode: __TurnLogicMode,
+  bonusLetterWordCount: number | undefined,
 };
 
 /**
@@ -55,6 +56,7 @@ export namespace SettingsState {
       new ProductTypeElement("players", AlgebraicType.createArrayType(__PlayerGameData.getTypeScriptAlgebraicType())),
       new ProductTypeElement("winCondition", __WinCondition.getTypeScriptAlgebraicType()),
       new ProductTypeElement("turnLogicMode", __TurnLogicMode.getTypeScriptAlgebraicType()),
+      new ProductTypeElement("bonusLetterWordCount", AlgebraicType.createOptionType(AlgebraicType.createU32Type())),
     ]);
   }
 

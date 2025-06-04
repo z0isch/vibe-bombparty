@@ -110,6 +110,7 @@ pub struct SettingsState {
     pub players: Vec<PlayerGameData>,
     pub win_condition: WinCondition,
     pub turn_logic_mode: TurnLogicMode,
+    pub bonus_letter_word_count: Option<u32>,
 }
 
 #[derive(Clone, SpacetimeType)]
@@ -268,6 +269,7 @@ pub fn game_countdown(ctx: &ReducerContext, arg: GameCountdownSchedule) -> Resul
                         players: Vec::new(),
                         win_condition: settings_clone.win_condition,
                         turn_logic_mode: settings_clone.turn_logic_mode,
+                        bonus_letter_word_count: settings_clone.bonus_letter_word_count,
                     },
                     current_trigram: String::new(),
                     trigram_examples: Vec::new(),
@@ -623,21 +625,13 @@ fn make_move(
                                         }
                                     }
                                     if word.len() > 10 {
-                                        let unused_letters: Vec<String> = ('A'..='Z')
-                                            .map(|c| c.to_string())
-                                            .filter(|letter| {
-                                                !player.used_letters.contains(letter)
-                                                    && !player.free_letters.contains(letter)
-                                            })
-                                            .collect();
-                                        if !unused_letters.is_empty() {
-                                            let random_index =
-                                                rng.next_u32() as usize % unused_letters.len();
-                                            let letter = unused_letters[random_index].clone();
-                                            player.free_letters.push(letter.clone());
-                                            player.events.push(GameStateEvent::FreeLetterAward(
-                                                FreeLetterAwardEvent { letter },
-                                            ));
+                                        award_random_free_letter(player, rng);
+                                    }
+                                    if let Some(n) = state.settings.bonus_letter_word_count {
+                                        let total_words = player.past_guesses.len();
+                                        if n > 0 && total_words > 0 && total_words % n as usize == 0
+                                        {
+                                            award_random_free_letter(player, rng);
                                         }
                                     }
                                     match state.settings.win_condition {
@@ -821,6 +815,7 @@ pub fn create_game(ctx: &ReducerContext, name: String) -> Result<(), String> {
             players: Vec::new(),
             win_condition: WinCondition::LastPlayerStanding { starting_lives: 3 },
             turn_logic_mode: TurnLogicMode::Classic,
+            bonus_letter_word_count: None,
         }),
         updated_at: ctx.timestamp,
         player_wins: Vec::new(),
@@ -1167,6 +1162,7 @@ pub fn restart_game(ctx: &ReducerContext, game_id: u32) -> Result<(), String> {
                     players: reset_players,
                     win_condition: win_condition.clone(),
                     turn_logic_mode: playing_state.settings.turn_logic_mode,
+                    bonus_letter_word_count: playing_state.settings.bonus_letter_word_count,
                 });
                 game_state.updated_at = ctx.timestamp;
                 update_game_state(ctx, game_state);
@@ -1258,5 +1254,51 @@ pub fn update_starting_lives(
         }
     } else {
         Err("Game not initialized".to_string())
+    }
+}
+
+#[spacetimedb::reducer]
+pub fn update_bonus_letter_word_count(
+    ctx: &ReducerContext,
+    game_id: u32,
+    count: Option<u32>,
+) -> Result<(), String> {
+    if let Some(mut game_state) = get_game_state(ctx, game_id) {
+        match &mut game_state.state {
+            GameState::Settings(settings) => {
+                // Validate: if Some, must be >= 1
+                if let Some(n) = count {
+                    if n < 1 {
+                        return Err("Bonus letter word count must be at least 1".to_string());
+                    }
+                }
+                settings.bonus_letter_word_count = count;
+                update_game_state(ctx, game_state);
+                Ok(())
+            }
+            _ => Err("Can only update bonus letter word count in Settings state".to_string()),
+        }
+    } else {
+        Err("Game not initialized".to_string())
+    }
+}
+
+// Helper function to award a random free letter to a player and push the event
+fn award_random_free_letter(player: &mut PlayerGameData, rng: &mut impl rand::RngCore) {
+    let unused_letters: Vec<String> = ('A'..='Z')
+        .map(|c| c.to_string())
+        .filter(|letter| {
+            !player.used_letters.contains(letter) && !player.free_letters.contains(letter)
+        })
+        .collect();
+    if !unused_letters.is_empty() {
+        let random_index = rng.next_u32() as usize % unused_letters.len();
+        let letter = unused_letters[random_index].clone();
+        player.free_letters.push(letter.clone());
+        player
+            .events
+            .push(GameStateEvent::FreeLetterAward(FreeLetterAwardEvent {
+                letter,
+            }));
     }
 }

@@ -67,6 +67,7 @@ export function GameState({ game, conn, playerInfos }: GameStateProps) {
             isCurrentPlayer={!!getCurrentPlayer()}
             winCondition={gameStateTable.state.value.winCondition}
             turnLogicMode={gameStateTable.state.value.turnLogicMode}
+            bonusLetterWordCount={gameStateTable.state.value.bonusLetterWordCount}
           />
         </div>
       );

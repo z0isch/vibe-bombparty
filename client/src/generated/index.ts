@@ -56,6 +56,8 @@ import { SubmitWord } from "./submit_word_reducer.ts";
 export { SubmitWord };
 import { TurnTimeout } from "./turn_timeout_reducer.ts";
 export { TurnTimeout };
+import { UpdateBonusLetterWordCount } from "./update_bonus_letter_word_count_reducer.ts";
+export { UpdateBonusLetterWordCount };
 import { UpdateCurrentWord } from "./update_current_word_reducer.ts";
 export { UpdateCurrentWord };
 import { UpdateStartingLives } from "./update_starting_lives_reducer.ts";
@@ -204,6 +206,10 @@ const REMOTE_MODULE = {
       reducerName: "turn_timeout",
       argsType: TurnTimeout.getTypeScriptAlgebraicType(),
     },
+    update_bonus_letter_word_count: {
+      reducerName: "update_bonus_letter_word_count",
+      argsType: UpdateBonusLetterWordCount.getTypeScriptAlgebraicType(),
+    },
     update_current_word: {
       reducerName: "update_current_word",
       argsType: UpdateCurrentWord.getTypeScriptAlgebraicType(),
@@ -263,6 +269,7 @@ export type Reducer = never
 | { name: "StartGame", args: StartGame }
 | { name: "SubmitWord", args: SubmitWord }
 | { name: "TurnTimeout", args: TurnTimeout }
+| { name: "UpdateBonusLetterWordCount", args: UpdateBonusLetterWordCount }
 | { name: "UpdateCurrentWord", args: UpdateCurrentWord }
 | { name: "UpdateStartingLives", args: UpdateStartingLives }
 | { name: "UpdateTurnLogicMode", args: UpdateTurnLogicMode }
@@ -449,6 +456,22 @@ export class RemoteReducers {
     this.connection.offReducer("turn_timeout", callback);
   }
 
+  updateBonusLetterWordCount(gameId: number, count: number | undefined) {
+    const __args = { gameId, count };
+    let __writer = new BinaryWriter(1024);
+    UpdateBonusLetterWordCount.getTypeScriptAlgebraicType().serialize(__writer, __args);
+    let __argsBuffer = __writer.getBuffer();
+    this.connection.callReducer("update_bonus_letter_word_count", __argsBuffer, this.setCallReducerFlags.updateBonusLetterWordCountFlags);
+  }
+
+  onUpdateBonusLetterWordCount(callback: (ctx: ReducerEventContext, gameId: number, count: number | undefined) => void) {
+    this.connection.onReducer("update_bonus_letter_word_count", callback);
+  }
+
+  removeOnUpdateBonusLetterWordCount(callback: (ctx: ReducerEventContext, gameId: number, count: number | undefined) => void) {
+    this.connection.offReducer("update_bonus_letter_word_count", callback);
+  }
+
   updateCurrentWord(gameId: number, word: string) {
     const __args = { gameId, word };
     let __writer = new BinaryWriter(1024);
@@ -580,6 +603,11 @@ export class SetReducerFlags {
   turnTimeoutFlags: CallReducerFlags = 'FullUpdate';
   turnTimeout(flags: CallReducerFlags) {
     this.turnTimeoutFlags = flags;
+  }
+
+  updateBonusLetterWordCountFlags: CallReducerFlags = 'FullUpdate';
+  updateBonusLetterWordCount(flags: CallReducerFlags) {
+    this.updateBonusLetterWordCountFlags = flags;
   }
 
   updateCurrentWordFlags: CallReducerFlags = 'FullUpdate';
