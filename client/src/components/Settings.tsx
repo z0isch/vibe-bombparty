@@ -190,9 +190,7 @@ export function Settings({
               placeholder="None"
               className="bg-gray-700 text-white px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 w-32"
             />
-            <p className="text-xs text-gray-400 mt-1">
-              Award a free letter every N words submitted. Leave blank to disable.
-            </p>
+            <p className="text-xs text-gray-400 mt-1">Leave blank to disable.</p>
           </div>
         </div>
       </div>
