@@ -1133,7 +1133,32 @@ fn update_game_state_and_schedule_turn_timeout(
 }
 
 #[spacetimedb::reducer]
-pub fn submit_word(ctx: &ReducerContext, game_id: u32, word: String) -> Result<(), String> {
+pub fn submit_word(
+    ctx: &ReducerContext,
+    game_id: u32,
+    word: String,
+    turn_number: u32,
+) -> Result<(), String> {
+    // Validate turn number matches current server state to prevent stale submissions
+    match get_game_state(ctx, game_id) {
+        Some(game_state) => match game_state.state {
+            GameState::Playing(playing_state) => {
+                if playing_state.turn_number != turn_number {
+                    return Err(format!(
+                        "Stale turn number. Client turn: {}, Server turn: {}",
+                        turn_number, playing_state.turn_number
+                    ));
+                }
+            }
+            _ => {
+                return Err("Game is not in playing state".to_string());
+            }
+        },
+        None => {
+            return Err("Game not found".to_string());
+        }
+    }
+
     update_game_state_and_schedule_turn_timeout(
         ctx,
         game_id,

@@ -34,6 +34,7 @@ import {
 export type SubmitWord = {
   gameId: number,
   word: string,
+  turnNumber: number,
 };
 
 /**
@@ -48,6 +49,7 @@ export namespace SubmitWord {
     return AlgebraicType.createProductType([
       new ProductTypeElement("gameId", AlgebraicType.createU32Type()),
       new ProductTypeElement("word", AlgebraicType.createStringType()),
+      new ProductTypeElement("turnNumber", AlgebraicType.createU32Type()),
     ]);
   }
 

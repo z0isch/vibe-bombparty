@@ -96,8 +96,15 @@ export function Player({
 
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && isTheirTurn && isCurrentPlayer) {
-      await conn.reducers.submitWord(gameId, inputWord);
-      setInputWord('');
+      try {
+        await conn.reducers.submitWord(gameId, inputWord, currentTurnNumber);
+        setInputWord('');
+      } catch (error) {
+        console.error('Word submission failed:', error);
+        // TODO: Show user-friendly error message
+        // For now, keep the word in the input so user can try again
+        // Could show a temporary notification that the turn has moved on
+      }
     }
   };
 

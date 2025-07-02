@@ -424,19 +424,19 @@ export class RemoteReducers {
     this.connection.offReducer("start_game", callback);
   }
 
-  submitWord(gameId: number, word: string) {
-    const __args = { gameId, word };
+  submitWord(gameId: number, word: string, turnNumber: number) {
+    const __args = { gameId, word, turnNumber };
     let __writer = new BinaryWriter(1024);
     SubmitWord.getTypeScriptAlgebraicType().serialize(__writer, __args);
     let __argsBuffer = __writer.getBuffer();
     this.connection.callReducer("submit_word", __argsBuffer, this.setCallReducerFlags.submitWordFlags);
   }
 
-  onSubmitWord(callback: (ctx: ReducerEventContext, gameId: number, word: string) => void) {
+  onSubmitWord(callback: (ctx: ReducerEventContext, gameId: number, word: string, turnNumber: number) => void) {
     this.connection.onReducer("submit_word", callback);
   }
 
-  removeOnSubmitWord(callback: (ctx: ReducerEventContext, gameId: number, word: string) => void) {
+  removeOnSubmitWord(callback: (ctx: ReducerEventContext, gameId: number, word: string, turnNumber: number) => void) {
     this.connection.offReducer("submit_word", callback);
   }
 
