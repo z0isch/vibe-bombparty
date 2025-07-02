@@ -165,7 +165,7 @@ export function Settings({
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Bonus Letter Every N Words (optional)
+              Bonus Letter Every X Words (optional)
             </label>
             <input
               type="number"
