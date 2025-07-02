@@ -23,7 +23,7 @@
 - ~Can't see player typing~
 - ~Can't lose hearts on simultaneous + last player standing~
 - ~Variable number of hearts~
-- ![image](https://github.com/user-attachments/assets/abdb132d-06b0-45b5-b4ab-b50c4cd487fc)
+- Broken with these settings ![image](https://github.com/user-attachments/assets/abdb132d-06b0-45b5-b4ab-b50c4cd487fc)
 
 
 # Ideas
