@@ -8,6 +8,7 @@ import { PlayerInfoTable } from '../generated/player_info_table_type';
 import TurnLogicMode from '../generated/turn_logic_mode_type';
 import { WinCondition } from '../generated/win_condition_type';
 import { usePlayerEventMotionProps } from '../hooks/usePlayerEventMotionProps';
+import { AlphabetDisplay } from './AlphabetDisplay';
 
 interface PlayerProps {
   player: PlayerGameData;
@@ -255,18 +256,8 @@ export function Player({
           }`}
           disabled={!inputEnabled}
         />
-        <div className="flex flex-wrap gap-1 mt-2">
-          {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').map((letter) => {
-            return (
-              <Letter
-                key={letter}
-                player={player}
-                letter={letter}
-                isUsed={player.usedLetters.includes(letter)}
-                isFree={player.freeLetters.includes(letter)}
-              />
-            );
-          })}
+        <div className="mt-2">
+          <AlphabetDisplay player={player} />
         </div>
       </div>
     </motion.div>
@@ -308,44 +299,5 @@ function Heart({
     >
       <path d="M11.645 20.91l-.007-.003-.022-.012a15.247 15.247 0 01-.383-.218 25.18 25.18 0 01-4.244-3.17C4.688 15.36 2.25 12.174 2.25 8.25 2.25 5.322 4.714 3 7.688 3A5.5 5.5 0 0112 5.052 5.5 5.5 0 0116.313 3c2.973 0 5.437 2.322 5.437 5.25 0 3.925-2.438 7.111-4.739 9.256a25.175 25.175 0 01-4.244 3.17 15.247 15.247 0 01-.383.219l-.022.012-.007.004-.003.001a.752.752 0 01-.704 0l-.003-.001z" />
     </motion.svg>
-  );
-}
-
-function Letter({
-  player,
-  letter,
-  isUsed,
-  isFree,
-}: {
-  player: PlayerGameData;
-  letter: string;
-  isUsed: boolean;
-  isFree: boolean;
-}) {
-  const motionProps = usePlayerEventMotionProps(
-    (events) => ({
-      animate:
-        letter === events.FreeLetterAward?.value.letter
-          ? {
-              scale: [1, 2, 1],
-            }
-          : {},
-    }),
-    player.playerIdentity
-  );
-
-  return (
-    <motion.span
-      className={`px-1.5 py-0.5 rounded text-sm ${
-        isFree
-          ? 'bg-yellow-900 text-yellow-300' // Gold for free letters
-          : isUsed
-            ? 'bg-gray-700 text-white' // Black/white for used letters
-            : 'bg-gray-700 text-gray-500' // Grey for unused letters
-      }`}
-      {...motionProps}
-    >
-      {letter}
-    </motion.span>
   );
 }

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DbConnection } from '../generated';
 import { PlayerInfoTable } from '../generated/player_info_table_type';
 import { PlayingState } from '../generated/playing_state_type';
+import { AlphabetDisplay } from './AlphabetDisplay';
 import { CircularCountdown } from './CircularCountdown';
 import { ExampleTrigrams } from './ExampleTrigrams';
 import { Player } from './Player';
@@ -152,10 +153,7 @@ export function Playing({ playingState, playerInfos, conn, gameId }: PlayingProp
                     );
                     if (!playerInfo) return null;
 
-                    const totalLetters = 26;
-                    const usedLetters = player.usedLetters.length;
                     const freeLetters = player.freeLetters.length;
-                    const progressPercent = (usedLetters / totalLetters) * 100;
 
                     return (
                       <div
@@ -176,40 +174,9 @@ export function Playing({ playingState, playerInfos, conn, gameId }: PlayingProp
                                 <span className="text-yellow-400">🏆</span>
                               )}
                           </div>
-                          <div className="text-sm text-gray-400">
-                            {usedLetters}/{totalLetters} letters ({Math.round(progressPercent)}%)
-                          </div>
                         </div>
 
-                        {/* Progress bar */}
-                        <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden mb-3">
-                          <div
-                            className="h-2 bg-green-500 transition-all duration-300"
-                            style={{ width: `${progressPercent}%` }}
-                          />
-                        </div>
-
-                        {/* Letter display */}
-                        <div className="flex flex-wrap gap-1">
-                          {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').map((letter) => {
-                            const isUsed = player.usedLetters.includes(letter);
-                            const isFree = player.freeLetters.includes(letter);
-                            return (
-                              <span
-                                key={letter}
-                                className={`px-1.5 py-0.5 rounded text-sm ${
-                                  isFree
-                                    ? 'bg-yellow-900 text-yellow-300' // Gold for free letters
-                                    : isUsed
-                                      ? 'bg-gray-700 text-white' // Black/white for used letters
-                                      : 'bg-gray-700 text-gray-500' // Grey for unused letters
-                                }`}
-                              >
-                                {letter}
-                              </span>
-                            );
-                          })}
-                        </div>
+                        <AlphabetDisplay player={player} />
 
                         {freeLetters > 0 && (
                           <div className="mt-2 text-sm text-yellow-300">
