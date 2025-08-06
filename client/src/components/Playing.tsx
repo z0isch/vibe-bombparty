@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { DbConnection } from '../generated';
-import GameResult from '../generated/game_result_type';
 import { PlayerInfoTable } from '../generated/player_info_table_type';
 import { PlayingState } from '../generated/playing_state_type';
 import { CircularCountdown } from './CircularCountdown';
@@ -132,6 +131,95 @@ export function Playing({ playingState, playerInfos, conn, gameId }: PlayingProp
               >
                 Play Again
               </button>
+            </div>
+          )}
+
+          {/* Show letter progress for UseAllLetters games */}
+          {playingState.settings.winCondition.tag === 'UseAllLetters' && (
+            <div className="mt-8 space-y-4">
+              <h3 className="text-2xl font-bold text-center mb-4">Final Letter Progress</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+                {[...playingState.players]
+                  .sort((a, b) => {
+                    // Sort by number of letters used (descending)
+                    const aLettersUsed = a.usedLetters.length;
+                    const bLettersUsed = b.usedLetters.length;
+                    return bLettersUsed - aLettersUsed;
+                  })
+                  .map((player) => {
+                    const playerInfo = playerInfos.find(
+                      (info) => info.identity.toHexString() === player.playerIdentity.toHexString()
+                    );
+                    if (!playerInfo) return null;
+
+                    const totalLetters = 26;
+                    const usedLetters = player.usedLetters.length;
+                    const freeLetters = player.freeLetters.length;
+                    const progressPercent = (usedLetters / totalLetters) * 100;
+
+                    return (
+                      <div
+                        key={player.playerIdentity.toHexString()}
+                        className={`bg-gray-800 p-4 rounded-lg ${
+                          winnerInfo &&
+                          playerInfo.identity.toHexString() === winnerInfo.identity.toHexString()
+                            ? 'ring-2 ring-yellow-400'
+                            : ''
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-lg">{playerInfo.username}</span>
+                            {winnerInfo &&
+                              playerInfo.identity.toHexString() ===
+                                winnerInfo.identity.toHexString() && (
+                                <span className="text-yellow-400">🏆</span>
+                              )}
+                          </div>
+                          <div className="text-sm text-gray-400">
+                            {usedLetters}/{totalLetters} letters ({Math.round(progressPercent)}%)
+                          </div>
+                        </div>
+
+                        {/* Progress bar */}
+                        <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden mb-3">
+                          <div
+                            className="h-2 bg-green-500 transition-all duration-300"
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </div>
+
+                        {/* Letter display */}
+                        <div className="flex flex-wrap gap-1">
+                          {Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').map((letter) => {
+                            const isUsed = player.usedLetters.includes(letter);
+                            const isFree = player.freeLetters.includes(letter);
+                            return (
+                              <span
+                                key={letter}
+                                className={`px-1.5 py-0.5 rounded text-sm ${
+                                  isFree
+                                    ? 'bg-yellow-900 text-yellow-300' // Gold for free letters
+                                    : isUsed
+                                      ? 'bg-gray-700 text-white' // Black/white for used letters
+                                      : 'bg-gray-700 text-gray-500' // Grey for unused letters
+                                }`}
+                              >
+                                {letter}
+                              </span>
+                            );
+                          })}
+                        </div>
+
+                        {freeLetters > 0 && (
+                          <div className="mt-2 text-sm text-yellow-300">
+                            {freeLetters} bonus letter{freeLetters !== 1 ? 's' : ''} earned
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
             </div>
           )}
         </div>
