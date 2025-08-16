@@ -1,6 +1,7 @@
 # Bombparty
 Clone of the multiplayer typing game bombparty using SpacetimeDB (Rust) and React (TypeScript).
-<img width="400" height="300" alt="image" src="https://github.com/user-attachments/assets/3dfc2bd0-b823-4d8a-9032-fa4e6b5b023f" />
+![bombparty](https://github.com/user-attachments/assets/bb0a1963-d1c6-4110-8af1-3a91055963f1)
+
 
 ## Why
 I wanted an excuse to test out working with an LLM to build something. This has largely been done using Cursor.
